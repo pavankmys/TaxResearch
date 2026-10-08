@@ -1,6 +1,6 @@
 # M1 plan: Core data and auth
 
-Status: **draft, awaiting approval** · Milestone: TSD 13.2 M1 · Workstreams A, G
+Status: **approved by the user on 2026-10-08 (frozen)** · Milestone: TSD 13.2 M1 · Workstreams A, G
 
 ## Goal
 
@@ -48,7 +48,7 @@ When M1 is done:
 3. **`tenants` table is created now.** It is small, and it lets every `tenant_id` column have a foreign key, so no table has to be altered later. `tenant_id` stays nullable and unused in the POC.
 4. **Enums use CHECK constraints**, not Postgres enum types. They are easier to change in later migrations, and `job_queue` already uses them.
 5. **Audit hash chain.**
-   - Fields hashed: `row_hash = sha256(canonical_json(row fields) || prev_hash)`.
+   - Fields hashed: `row_hash = sha256(prev_hash || canonical_json(row fields))`. IPs are normalised with `ipaddress` before hashing and storing. `detail` holds only str, int, bool, null, list and dict values, so the JSONB round trip keeps hashes stable.
    - Ordering: the insert takes `pg_advisory_xact_lock` to keep the chain in order when requests run at the same time.
    - Timing: each audit row is written in the same transaction as the action it records.
    - Append-only: a trigger rejects UPDATE, DELETE and TRUNCATE on `audit_log`.
