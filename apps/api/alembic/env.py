@@ -4,8 +4,8 @@ from logging.config import fileConfig
 
 from alembic import context
 
-# Import settings to read DATABASE_URL from environment
-from app.settings import get_settings
+import os
+
 from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
@@ -21,9 +21,14 @@ if config.config_file_name is not None:
         # If logging config fails (e.g., no logging config in alembic.ini), skip it
         pass
 
-# set the sqlalchemy.url from DATABASE_URL environment variable
-settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.get_database_url())
+# Set sqlalchemy.url from DATABASE_URL only, so migrations don't need the API's other
+# settings (such as JWT_SECRET).
+database_url = os.environ.get("DATABASE_URL")
+if not database_url:
+    raise RuntimeError("DATABASE_URL must be set to run migrations")
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Model's MetaData object for 'autogenerate' support
 # from myapp import mymodel
