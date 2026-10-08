@@ -14,7 +14,7 @@ This FSD defines what the GST Tax Research Assistant must do so it can be frozen
 | Jurisdiction | India, Goods and Services Tax (central, integrated, state, UT, compensation cess) |
 | Requirement IDs | FR-\<area\>-\<nn\> for functional, NFR-\<nn\> for non-functional |
 | Priority key | MVP = first release; P2 = second; P3 = later |
-| Delivery | MVP is built first as a POC (Docker, Postgres full-text search, public documents only), then hosted on AWS India region. |
+| Delivery | MVP is built first as a POC (containers run with Podman on an on-prem Debian 13 machine, Postgres full-text search, public documents only), then hosted on AWS India region. |
 
 Once frozen, any change to a requirement needs a version bump and sign-off from the product owner.
 
@@ -24,6 +24,7 @@ Once frozen, any change to a requirement needs a version bump and sign-off from 
 | --- | --- | --- |
 | v0.1 | 7 Oct 2026 | Initial draft |
 | v0.2 | 8 Oct 2026 | Re-scoped Release 1 to a non-LLM research repository: keyword + citation + graph search; LLM, semantic search, planning and litigation moved to P2; added extraction-quality and completeness requirements; POC-first delivery |
+| v0.2.1 | 8 Oct 2026 | POC host set to an on-prem Debian 13 machine running Podman; open decisions closed; expert panel arranged by the product owner |
 
 ## 2. Product overview
 
@@ -376,7 +377,7 @@ The query set is versioned and re-run on every parser, index, synonym-list or ra
 
 ## 16. Release phasing
 
-The MVP proves the hardest part, trustworthy point-in-time research, before any drafting is built on top of it. MVP is built first as a POC (Docker, Postgres full-text search), then deployed in the production profile on AWS India region. Each later phase starts only when the previous phase passes its quality gate (section 15).
+The MVP proves the hardest part, trustworthy point-in-time research, before any drafting is built on top of it. MVP is built first as a POC (Podman containers, Postgres full-text search), then deployed in the production profile on AWS India region. Each later phase starts only when the previous phase passes its quality gate (section 15).
 
 | Phase | Focus | Contents | Gate to next phase |
 | --- | --- | --- | --- |
@@ -388,7 +389,7 @@ Feature IDs marked MVP, P2 and P3 in sections 4 to 12 map to these phases. Calen
 
 ## 17. Risks, open questions and decisions for freeze
 
-The FSD can be frozen once the open dependency below is resolved. The risks stay on the register through delivery.
+No open decision blocks the freeze. The items marked 'decide before production' stay on the list. The risks stay on the register through delivery.
 
 ### Risks
 
@@ -409,7 +410,7 @@ The FSD can be frozen once the open dependency below is resolved. The risks stay
 #### Decided
 
 - [x] No generative AI in Release 1; search is keyword, citation and graph only
-- [x] MVP is built first as a POC on Docker and Postgres full-text search, then moved to AWS India region
+- [x] MVP is built first as a POC on Podman containers (on-prem Debian 13 machine) and Postgres full-text search, then moved to AWS India region
 - [x] POC corpus as listed in section 3, loaded from files, no automatic crawling
 - [x] Target customer for MVP: corporate tax teams (in-house). Matters, saved searches and export matter more than firm templates. SSO stays P2 for the POC; revisit it before production, because corporate IT teams often require it
 - [x] Case-law source: court sites and downloaded files only; no licensed reporter feed in Release 1
@@ -417,6 +418,8 @@ The FSD can be frozen once the open dependency below is resolved. The risks stay
 - [x] Firm-uploaded documents are never used to improve shared features (default confirmed: no)
 - [x] Production hosting: AWS India region (ap-south-1), with DR in ap-south-2
 - [x] Legal review of court and government site terms is a mandatory gate before any automatic crawling
+- [x] Expert panel for the query set and amendment review is arranged by the product owner (needed before M4 and M5)
+- [x] POC host: an on-prem Debian 13 machine; containers run with Podman
 
 #### Not needed before the POC (decide before production)
 
@@ -426,7 +429,7 @@ The FSD can be frozen once the open dependency below is resolved. The risks stay
 
 #### Open dependency
 
-- [ ] Expert panel for the query set and for amendment review, and hours per week. Owner: product owner. Needed before M5 (query set) and before M4 (amendment review)
+- None blocking the freeze. Names and weekly hours of the expert panel are kept outside the repository.
 
 ## 18. Glossary
 
@@ -447,7 +450,7 @@ The FSD can be frozen once the open dependency below is resolved. The risks stay
 | Matter | A client engagement or case that groups research, documents and drafts |
 | Mention index | Links from every document to the provisions it cites, in any written form |
 | Point-in-time law | The text of a provision as it stood on a given date |
-| POC | Proof of concept: MVP built first on Docker and Postgres full-text search |
+| POC | Proof of concept: MVP built first on Podman containers and Postgres full-text search |
 | Production profile | The AWS India region deployment of the MVP |
 | Query set | Expert-written research queries, each with a must-find list, used as a release gate |
 | RCM | Reverse charge mechanism |

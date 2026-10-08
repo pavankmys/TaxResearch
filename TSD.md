@@ -19,7 +19,7 @@ Draft v0.2 · Based on FSD draft v0.2 (8 Oct 2026)
 - Section 16 maps every MVP FR and NFR ID to a TSD section.
 - "Shared corpus" means the legal content curated by the platform team. "Private content" means firm uploads.
 - "As-on date" is the FSD term for the date whose law a search result must reflect.
-- Two profiles are described: POC (Docker, Postgres FTS, public documents only, built first) and Production (AWS, OpenSearch, RLS, built after POC acceptance). See section 2.4.
+- Two profiles are described: POC (Podman containers, Postgres FTS, public documents only, built first) and Production (AWS, OpenSearch, RLS, built after POC acceptance). See section 2.4.
 - "Deferred (P2)" marks design kept for the second phase rather than deleted.
 - Config values (thresholds, weights, TTLs) are starting values. They are tuned against the query set (section 11).
 
@@ -29,6 +29,7 @@ Draft v0.2 · Based on FSD draft v0.2 (8 Oct 2026)
 | --- | --- | --- |
 | v0.1 | 7 Oct 2026 | Initial draft |
 | v0.2 | 8 Oct 2026 | Re-based on FSD v0.2: non-LLM research repository; POC profile (Docker, Postgres full-text search) and production profile (AWS); LLM, embeddings and answer service moved to Deferred (P2); added extraction-quality, mention index, coverage and no-cap search design; milestones rebuilt |
+| v0.2.1 | 8 Oct 2026 | POC host set to an on-prem Debian 13 machine running Podman; expert panel arranged; target customer and other open decisions recorded |
 
 ## 2. Architecture overview
 
@@ -116,7 +117,7 @@ flowchart TB
 
 | Aspect | POC | Production |
 | --- | --- | --- |
-| Hosting | Docker Compose on one machine (16 GB RAM+, 100-150 GB disk) | AWS ap-south-1; DR copy in ap-south-2 |
+| Hosting | Podman Compose (rootless) on one on-prem Debian 13 machine (16 GB RAM+, 100-150 GB disk) | AWS ap-south-1; DR copy in ap-south-2 |
 | Database | PostgreSQL 16 with FTS: tsvector + GIN, websearch/phrase queries, pg_trgm for titles | Amazon RDS Postgres Multi-AZ 16; FTS stays as the fallback backend |
 | Search | Postgres FTS only. Ranking: ts_rank_cd + authority/jurisdiction/recency/status factors. Evaluate pg_search BM25 if ranking is poor. | Amazon OpenSearch (BM25) behind the SearchBackend interface, adopted if the POC query-set gate shows Postgres FTS is not enough (A-10). |
 | Queue | Postgres-based (SELECT ... FOR UPDATE SKIP LOCKED) behind JobQueue interface | SQS or Celery + Redis behind JobQueue interface |
@@ -127,7 +128,7 @@ flowchart TB
 | Loaders | Watch folder + fetch-by-URL on request (admin form / CLI) | Same. Automatic scheduled crawling is P2, after a legal review of site terms. |
 | Tenants and RLS | Single shared corpus. No tenant isolation or RLS. Tables keep nullable tenant_id for P2. | RLS and multi-tenant support (P2). |
 | Observability | Structured JSON logs + simple metrics page | OpenTelemetry, CloudWatch, Grafana, Sentry |
-| IaC | Docker Compose | Terraform + GitHub Actions |
+| IaC | Compose file run with `podman compose` | Terraform + GitHub Actions |
 | Data allowed | Public documents only (CGST Act, IGST Act, notifications, circulars, SC/HC/GSTAT judgements from 1 July 2017) | Same plus P2: forms, AAR/AAAR, Council material, state GST, firm uploads |
 
 ### 2.5 Interfaces
@@ -158,7 +159,7 @@ flowchart TB
 | Auth | Local: email + password (argon2), session JWT | Amazon Cognito (user pool, TOTP MFA, SAML/OIDC later) | POC simple. Production managed. |
 | Export and email | python-docx templates + WeasyPrint (PDF); in-app digest | python-docx + WeasyPrint; Amazon SES (ap-south-1) | Letterhead and watermark in both. Email production only. |
 | Observability | Structured JSON logs, simple metrics page | OpenTelemetry, CloudWatch, Grafana, Sentry | Local simplicity; production standard. |
-| IaC and CI/CD | Docker Compose | Terraform; GitHub Actions | Reproducible. DR rebuild (NFR-14). |
+| IaC and CI/CD | Compose file run with `podman compose` | Terraform; GitHub Actions | Reproducible. DR rebuild (NFR-14). |
 | Compute | Single machine or container | ECS Fargate (API, workers), CPU only | No Kubernetes for MVP scale. |
 
 ### 3.2 Deferred (P2): LLM routing
@@ -175,14 +176,14 @@ Semantic search (embeddings, reranking, vector store) is deferred to P2 because 
 | Postgres FTS | Query-set recall and ranking meet the gates and keyword p95 < 1.5 s | Ranking quality is below target or p95 above 1.0 s at 200 concurrent users; proximity/facet needs grow | OpenSearch via SearchBackend. Evaluate pg_search BM25 first. |
 | Single Postgres writer | CPU under 60% at peak | Sustained above that | Add read replicas for search hydration and reader pages. Then partition large tables (`chunks`, `blocks`) by hash on `doc_id`. |
 | Postgres-based JobQueue | Backfill and daily load drain within the 24 h freshness target | Queue lag breaches the 24 h freshness SLO | SQS or Celery + Redis via JobQueue. |
-| Docker Compose | POC acceptance gates pass | Production profile deployment starts | ECS Fargate via same code. |
+| Podman Compose (on-prem Debian 13) | POC acceptance gates pass | Production profile deployment starts | ECS Fargate via same code. |
 | ECS Fargate | Team under ~6 engineers on infra | Many services to run | EKS. |
 
 ### 3.5 Cost
 
 **Rough estimates, not verified against AWS price lists.**
 
-- **POC:** ~$0 cloud cost (local Docker).
+- **POC:** ~$0 cloud cost (on-prem machine, Podman containers).
 - **Production profile, year-one scale, USD/month:** RDS Postgres Multi-AZ (~32 GB class) 500–800; OpenSearch 3 nodes 500–900; ECS Fargate 400–600; Redis/queue, ALB, CloudFront, WAF 150–300; S3 + replication 50–100; security/ops services, NAT, endpoints 250–450; Cognito/SES/Sentry/Grafana 0–150; DR backups 50–100. **Total: ~2,000–3,400 USD/month.** Staging +700–1,500. Textract fallback (one-time, if used) ~400–800. Dropped costs vs v0.1 design: Bedrock usage, GPU, extra Postgres memory for vectors (~700–1,100/month).
 
 ## 4. Data model
@@ -960,8 +961,8 @@ POC holds only public documents and test logins; DPDP controls apply from the pr
 
 ## 10. Infrastructure and deployment
 
-### 10.0 POC topology (Docker Compose)
-Services: `web`, `api`, `worker` (one container, JobQueue consumer, OCR tools inside), `postgres` (16 with pg_trgm), `minio`. Volumes: pgdata, minio-data, watch folder. One command to start: `docker compose up`.
+### 10.0 POC topology (Podman Compose on Debian 13)
+Services: `web`, `api`, `worker` (one container, JobQueue consumer, OCR tools inside), `postgres` (16 with pg_trgm), `minio`. Volumes: pgdata, minio-data, watch folder. One command to start: `podman compose up`. Rootless Podman notes: use fully qualified image names (for example `docker.io/library/postgres:16`); publish ports above 1024; label volumes for SELinux-style mounts where needed (`:Z`); do not rely on `depends_on: condition: service_healthy` (support varies by Podman Compose version), so the API and worker wait for Postgres with a small startup script; auto-start at boot with systemd Quadlet files is added after M0. Image build files are named `Dockerfile`, which Podman and Docker both accept.
 
 Resource guide: 16 GB RAM+ and 100–150 GB disk (A-28). Seed: public sample corpus plus test fixtures. Note: public documents only; no client data.
 
@@ -982,11 +983,11 @@ Resource guide: 16 GB RAM+ and 100–150 GB disk (A-28). Seed: public sample cor
 ### 10.2 Environments
 | Env | Purpose | Data |
 | --- | --- | --- |
-| `dev` (local Docker Compose, POC) | Fast feedback | Seeded sample corpus, test fixtures |
+| `dev` (Podman Compose on the on-prem Debian 13 machine, POC) | Fast feedback | Seeded sample corpus, test fixtures |
 | `staging` (production profile) | Release candidate, load tests, eval runs, pen-test target | Public corpus copy |
 | `prod` (production profile) | Customers | Real |
 
-No customer data outside prod. Separate AWS accounts, KMS keys and Cognito pools per environment. Local `docker compose up` brings up the POC services (see 10.0).
+No customer data outside prod. Separate AWS accounts, KMS keys and Cognito pools per environment. Local `podman compose up` brings up the POC services (see 10.0).
 
 ### 10.3 CI/CD
 | Stage | Tooling | Gate |
@@ -1146,7 +1147,7 @@ WS-A platform and infrastructure (POC Compose first, production later; NFR-05, 0
 ### 13.2 Milestones (ordered, with dependencies)
 | # | Milestone | Deliverable and exit criteria | Depends on | Workstreams |
 | --- | --- | --- | --- | --- |
-| M0 | Foundations | Monorepo, Compose stack, CI, schema skeleton. Expert panel named. Query set and fixture set authoring start. | none | A, H |
+| M0 | Foundations | Monorepo, Podman Compose stack, CI, schema skeleton. Expert panel named. Query set and fixture set authoring start. | none | A, H |
 | M1 | Core data and auth | Schema and migrations (section 4), local auth, roles, audit log | M0 | A, G |
 | M2 | Fetch, parse, store | Loaders for CBIC portal and Supreme Court documents (files and fetch-by-URL) end to end to `blocks`. Dedup. Manual + fetch-by-URL loaders. Page accounting and cross-check. | M1 | B |
 | M3 | Structure and metadata | Segmentation for Acts, Rules, notifications, circulars, judgements. Metadata extraction (rule-based). Review queue UI (metadata, parse failure, miss report). Ingestion dashboard. | M2 | B, F |
@@ -1225,7 +1226,7 @@ Each assumption is a default this TSD builds on. When the FSD freezes, confirm o
 | A-3 | No state GST content in MVP. The schema carries `state_code` and `instruments` for state Acts. P2 starts with the top 10 states by GST collection. | Decision 3, FR-COR-04 | 4.4 | State list changes sources and connectors only. |
 | A-4 | Deferred (P2): LLM provider (Claude on Bedrock ap-south-1 was the plan); no LLM in MVP. | Decision 4, NFR-07, FR-AI-10 | 3.2, 9.4, R-5 | If a required model is unavailable in India: use the best available in-region model and re-run the eval gate, or take a legal decision on cross-border processing. |
 | A-5 | No billing in MVP. There is no LLM in MVP, so no AI cost control (NFR-15 is P2). Pricing model does not affect the architecture. | Decision 5, FR-ADM-05 (P2) | 10.6 | Seat or tiered plans: add plan tables and entitlement checks. |
-| A-6 | An expert panel exists from M0: at least 2 content reviewers (CA or advocate) for amendment review plus 2 to 3 domain experts for the query set, fixtures and audits. | Decision 6, NFR-04 | 5.8, 11.2, R-8 | Less capacity: a longer review SLA weakens the "consolidated within 48 h" target and the 24-hours-after-loading acceptance. Open dependency: the product owner names the panel and weekly hours before M4 (amendment review) and M5 (query set). |
+| A-6 | An expert panel exists from M0: at least 2 content reviewers (CA or advocate) for amendment review plus 2 to 3 domain experts for the query set, fixtures and audits. | Decision 6, NFR-04 | 5.8, 11.2, R-8 | Less capacity: a longer review SLA weakens the "consolidated within 48 h" target and the 24-hours-after-loading acceptance. The product owner has arranged the panel; names and weekly hours are kept outside the repository. |
 | A-7 | Firm-uploaded documents are never used to improve shared features or train models. Only aggregate, non-content metrics (counts, cost) cross tenants. | Decision 7, FR-AI-10, FR-COR-05 | 9.1, 9.4 | Opt-in learning would need consent, a separate pipeline and anonymisation. |
 | A-8 | Product name is a placeholder (`taxresearch`) used only in repo and service names. | Decision 8 | 13.3 | Rename only. |
 | A-9 | Deferred (P2): embeddings BGE-M3 and reranker bge-reranker-v2-m3. | Not in FSD | 3.3 | Swap model, backfill, re-run retrieval eval. |
@@ -1247,7 +1248,7 @@ Each assumption is a default this TSD builds on. When the FSD freezes, confirm o
 | A-25 | About 20 chunks per document on average, about 10M chunks in year one. | NFR scope (500,000 documents) | 4.11 | Re-size Postgres and OpenSearch. |
 | A-26 | The citation alias list (act and rules abbreviations, notification series codes, reporter and case-number patterns) is built and maintained by domain experts. | FR-RES-02 | 5.4, 6.3 | None. Data work. |
 | A-27 | Per-tenant KMS key is P2. | NFR-09, FR-AI-10 | 9.3 | Deferred to P2 when private uploads arrive. |
-| A-28 | POC hardware: 16 GB RAM+, 100-150 GB disk. | FSD constraints | 10.0, 4.11 | Upgrade hardware or reduce corpus size. |
+| A-28 | POC host: on-prem Debian 13 machine running Podman (rootless), 16 GB RAM+, 100-150 GB disk. | FSD constraints | 10.0, 4.11 | Upgrade hardware or reduce corpus size. |
 | A-29 | POC loaders read downloaded files plus fetch-by-URL on request; legal review of site terms precedes any automatic crawling. | FSD constraints | 5.3, R-3 | Legal review complete before enabling scheduled crawling. |
 | A-30 | The synonym and abbreviation list is built and maintained by domain experts. | FR-RES-16 | 5.4, 6.4, R-18 | None. Data work. |
 | A-31 | Query set and fixture set exist before M5. | FSD section 15 | 11.2, 11.3 | Delays M5 until sets are ready. |
