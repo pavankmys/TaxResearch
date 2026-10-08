@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY apps/worker/pyproject.toml /app/
 COPY apps/worker/worker /app/worker
 COPY packages/legal-core /app/packages/legal-core
+COPY packages/storage /app/packages/storage
 COPY scripts /app/scripts
 COPY config /app/config
 
@@ -30,7 +31,8 @@ RUN pip install --no-cache-dir \
     pypdfium2 \
     pdfplumber && \
     pip install --no-cache-dir -e . && \
-    pip install --no-cache-dir -e /app/packages/legal-core
+    pip install --no-cache-dir -e /app/packages/legal-core && \
+    pip install --no-cache-dir -e /app/packages/storage
 
 # Change ownership
 RUN chown -R appuser:appuser /app

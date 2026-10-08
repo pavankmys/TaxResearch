@@ -60,6 +60,12 @@ def load_sources() -> dict[str, SourceInfo]:
     return sources
 
 
+def load_source_entries() -> list[dict[str, Any]]:
+    """Return every entry in sources.yaml as written (config order), for the sources listing."""
+    entries = _load("sources.yaml").get("sources") or []
+    return [dict(entry) for entry in entries if isinstance(entry, dict) and "code" in entry]
+
+
 @lru_cache(maxsize=1)
 def load_doc_types() -> dict[str, int]:
     """Return the doc_type to authority rank map from authority.yaml."""

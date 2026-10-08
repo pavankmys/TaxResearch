@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     login_max_failures: int = 5
     login_window_seconds: int = 900
 
+    # Object store (same variables as the worker): raw files, page images and uploads
+    object_store: str = "local"  # "s3" or "local"
+    s3_endpoint_url: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket: str = ""
+    local_store_path: str = "./data"
+
     class Config:
         """Pydantic config."""
 

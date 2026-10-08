@@ -18,12 +18,14 @@ COPY apps/api/app /app/app
 COPY apps/api/alembic /app/alembic
 COPY apps/api/alembic.ini /app/
 COPY packages/legal-core /app/packages/legal-core
+COPY packages/storage /app/packages/storage
 COPY scripts /app/scripts
 COPY config /app/config
 
 # Install dependencies
 RUN pip install --no-cache-dir -e . && \
-    pip install --no-cache-dir -e /app/packages/legal-core
+    pip install --no-cache-dir -e /app/packages/legal-core && \
+    pip install --no-cache-dir -e /app/packages/storage
 
 # Change ownership
 RUN chown -R appuser:appuser /app

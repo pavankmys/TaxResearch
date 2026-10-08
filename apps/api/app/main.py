@@ -15,7 +15,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
 from app.db import get_engine, get_session
-from app.routers import admin_audit, admin_users, auth, ingestion
+from app.routers import (
+    admin_audit,
+    admin_users,
+    auth,
+    ingestion,
+    miss_reports,
+    platform_dashboard,
+    platform_documents,
+    platform_jobs,
+    platform_sources,
+    review_tasks,
+)
 from app.settings import get_settings
 
 
@@ -156,6 +167,12 @@ def create_app() -> FastAPI:
     app.include_router(admin_users.router)
     app.include_router(admin_audit.router)
     app.include_router(ingestion.router)
+    app.include_router(platform_documents.router)
+    app.include_router(platform_sources.router)
+    app.include_router(platform_jobs.router)
+    app.include_router(platform_dashboard.router)
+    app.include_router(miss_reports.router)
+    app.include_router(review_tasks.router)
 
     return app
 
