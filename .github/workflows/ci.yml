@@ -1,10 +1,18 @@
 name: CI
 
+# CI minutes are limited: run on PRs, merges to main, and on demand only.
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
-    branches: [main, develop]
+    paths-ignore: ["**/*.md", "docs/**"]
+  workflow_dispatch:
+
+# A newer run for the same branch or PR cancels the older one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.12"

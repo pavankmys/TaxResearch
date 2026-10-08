@@ -118,6 +118,19 @@ The indexes are those listed in TSD 4.5 and 4.11:
 - **Repo checks:** ruff, ruff format, mypy strict and the full pytest suite.
 - **Where it runs:** this session has Postgres 16, so the integration tests run here, not only in CI.
 
-## Separate issue found (not in this plan)
+## CI triggers (added to scope on 2026-10-08, user-approved)
 
-CI only runs on pushes and PRs to `main` and `develop`, and the repo has neither branch. CI has therefore never run. Decide separately how to fix this: create `main`, or widen the triggers.
+CI only ran on pushes and PRs to `main` and `develop`, and the repo has neither branch, so it had never run. CI minutes are limited, so the fix keeps runs rare:
+
+- Runs on pull requests (any base), pushes to `main`, and manual `workflow_dispatch`.
+- Changes that touch only Markdown or `docs/` don't trigger a run.
+- `concurrency` with `cancel-in-progress` stops superseded runs.
+- Pushes to work branches don't run CI. Work is pushed to the remote only at milestone boundaries or on request.
+
+## Review changes applied during coding
+
+- `alembic/env.py` reads only `DATABASE_URL`, so migrations don't require `JWT_SECRET` or other API settings.
+- Enum-like columns in 0004 (`sources.kind`, `blocks.kind`, `page_extractions.method`, `circulars.kind`, `judgements.court_level`, `document_topics.source`, `synonym_terms.kind`) are `NOT NULL`.
+- The UUIDv7 unit test file is `test_uuid7.py`. The name `test_ids.py` clashed with the legal-core tests under importlib import mode.
+- The audit `detail` field also rejects NUL characters, which JSONB can't store.
+- Tamper-detection integration test lives in its own module so the broken chain doesn't affect other tests.
