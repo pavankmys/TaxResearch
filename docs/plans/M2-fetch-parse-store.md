@@ -186,3 +186,19 @@ Problems go to the `parse_failure` review queue. Every step is tracked in `inges
 1. Real sample documents: approved to download 3 to 5 public documents from the official sites into `eval/fixtures/`. Synthetic fixtures remain the CI baseline.
 2. API file upload: deferred to M3.
 3. OCR: Tesseract CLI per page (decision 5).
+
+## Review changes applied during coding
+
+- `min_chars_per_page_area` lowered from 0.0005 to 0.00002 (about 10 characters on A4). The first value sent short born-digital pages, such as a last page or a table page, to OCR.
+- PDF test builders live in `worker/testing/pdf_fixtures.py`. A module under `apps/worker/tests/` clashed with the API's `tests` package under importlib import mode. Worker DB tests use per-module migration fixtures, not a `conftest.py`, for the same reason.
+- The OCR smoke test also skips when `ocrmypdf` isn't installed. It is only in the worker image.
+- Two pre-existing queue bugs fixed: JSON payloads now serialise in `enqueue`, and `claim` returns a string ID.
+- `page_texts.tsv` is filled with `to_tsvector('simple', text)` on insert.
+
+## Known gaps (follow-ups)
+
+- **DNS rebinding:** the fetcher checks resolved addresses, then httpx resolves again when it connects. The official-domain allow-list is the main control. Pinning the checked address is a follow-up.
+- **`legal-core` not declared:** the worker imports it, but `apps/worker/pyproject.toml` doesn't list it. The Dockerfile and CI install it separately.
+- **Untested paths:** the CLI commands, the `__main__` start-up and the watch loop thread have no tests. The watch folder is tested with a fake submit.
+- **Leftover test rows:** `test_acquire_db` leaves its rows in the test database.
+- **Short documents:** two-page documents never get boilerplate flags (minimum 3 pages). Simhash distances are larger on short texts, which matters for M3 near-duplicate matching.

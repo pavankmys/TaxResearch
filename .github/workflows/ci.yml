@@ -121,6 +121,11 @@ jobs:
           find . -maxdepth 3 -name "pyproject.toml" -path "*/apps/*" -o -name "pyproject.toml" -path "*/packages/*" | \
             xargs -I {} sh -c 'pip install -e "$(dirname {})"'
 
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+
       - name: Run integration tests
         env:
           DATABASE_URL: postgresql://taxresearch_test:test-password-ci@localhost:5432/taxresearch_test

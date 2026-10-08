@@ -383,3 +383,88 @@ def open_review_task(
         .returning(review_tasks.c.id)
     )
     return UUID(str(conn.execute(stmt).scalar_one()))
+
+
+def has_open_review_task(conn: Connection, kind: str, subject_type: str, subject_id: UUID) -> bool:
+    """True when an open review task of this kind exists for the subject."""
+    row = conn.execute(
+        sa.select(review_tasks.c.id)
+        .where(
+            review_tasks.c.kind == kind,
+            review_tasks.c.subject_type == subject_type,
+            review_tasks.c.subject_id == subject_id,
+            review_tasks.c.status == "open",
+        )
+        .limit(1)
+    ).first()
+    return row is not None
+
+
+def get_version(conn: Connection, version_id: UUID) -> dict[str, Any] | None:
+    """Return the parse-relevant columns of a document version, or None if it is missing."""
+    row = (
+        conn.execute(
+            sa.select(
+                document_versions.c.id,
+                document_versions.c.raw_s3_key,
+                document_versions.c.mime,
+                document_versions.c.parser_version,
+                document_versions.c.parsed_at,
+            ).where(document_versions.c.id == version_id)
+        )
+        .mappings()
+        .first()
+    )
+    return dict(row) if row is not None else None
+
+
+def update_version(conn: Connection, version_id: UUID, **fields: Any) -> int:  # noqa: ANN401
+    """Update columns of one document_versions row and bump updated_at. Returns rows changed."""
+    result = conn.execute(
+        document_versions.update()
+        .where(document_versions.c.id == version_id)
+        .values(**fields, updated_at=_now())
+    )
+    return int(result.rowcount)
+
+
+def delete_parse_output(conn: Connection, version_id: UUID) -> None:
+    """Remove the derived rows (page accounting, page texts, blocks) of a version."""
+    for table in (blocks, page_texts, page_extractions):
+        conn.execute(table.delete().where(table.c.document_version_id == version_id))
+
+
+def insert_page_extractions(conn: Connection, rows: list[dict[str, Any]]) -> None:
+    """Bulk-insert page accounting rows (one executemany)."""
+    if rows:
+        conn.execute(page_extractions.insert(), rows)
+
+
+_INSERT_PAGE_TEXT = sa.text(
+    "INSERT INTO page_texts (document_version_id, page_no, text, tsv, updated_at) VALUES ("
+    ":document_version_id, :page_no, :text, "
+    "to_tsvector('simple'::regconfig, CAST(:body AS text)), :updated_at)"
+)
+
+
+def insert_page_texts(conn: Connection, rows: list[dict[str, Any]]) -> None:
+    """Bulk-insert page texts (one executemany). Each row carries ``body``, which fills tsv."""
+    if rows:
+        conn.execute(_INSERT_PAGE_TEXT, rows)
+
+
+def insert_blocks(conn: Connection, rows: list[dict[str, Any]]) -> None:
+    """Bulk-insert blocks (one executemany)."""
+    if rows:
+        conn.execute(blocks.insert(), rows)
+
+
+def count_page_extractions(conn: Connection, version_id: UUID) -> int:
+    """Number of page_extractions rows stored for a version."""
+    return int(
+        conn.execute(
+            sa.select(sa.func.count())
+            .select_from(page_extractions)
+            .where(page_extractions.c.document_version_id == version_id)
+        ).scalar_one()
+    )
