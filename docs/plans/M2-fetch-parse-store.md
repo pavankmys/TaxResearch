@@ -1,6 +1,6 @@
 # M2 plan: Fetch, parse, store
 
-Status: **draft, awaiting approval** · Milestone: TSD 13.2 M2 · Workstream B
+Status: **approved by the user on 2026-10-08 (frozen)** · Milestone: TSD 13.2 M2 · Workstream B
 
 ## Goal
 
@@ -181,8 +181,8 @@ Problems go to the `parse_failure` review queue. Every step is tracked in `inges
 - **Recall harness:** synthetic born-digital fixtures must reach 99.5% or more.
 - **Repo checks:** ruff, ruff format, mypy strict, all unit tests, and the integration tests against local Postgres 16.
 
-## Open questions for approval
+## Decisions on open questions (user, 2026-10-08)
 
-1. **Real sample documents.** The plan works on synthetic PDFs. For real-world confidence I'd like 3 to 5 public documents in `eval/fixtures/`, for example a CBIC CT notification, a CBIC circular, and a Supreme Court judgement. Can you supply them, or may I download them from the official sites into the repo?
-2. **API file upload.** Deferring it to M3 keeps the API free of object-store code for now. Files go in through the CLI and the watch folder. Is that acceptable?
-3. **Recommended:** OCR with the Tesseract CLI per page (decision 5), not OCRmyPDF.
+1. Real sample documents: approved to download 3 to 5 public documents from the official sites into `eval/fixtures/`. Synthetic fixtures remain the CI baseline.
+2. API file upload: deferred to M3.
+3. OCR: Tesseract CLI per page (decision 5).
