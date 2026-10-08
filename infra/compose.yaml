@@ -110,6 +110,8 @@ services:
     environment:
       API_URL: http://api:8000
       NODE_ENV: production
+      # The session cookie is Secure by default. Local http runs need COOKIE_SECURE=false.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     ports:
       - 127.0.0.1:3000:3000
     restart: unless-stopped

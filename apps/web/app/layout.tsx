@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
+
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'TaxResearch POC',
-  description: 'GST Tax Research Assistant - POC',
+  title: "TaxResearch Console",
+  description: "Reviewer console for the TaxResearch corpus",
 };
 
 export default function RootLayout({
@@ -12,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen bg-background text-foreground">{children}</body>
     </html>
   );
 }

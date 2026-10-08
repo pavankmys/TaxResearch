@@ -67,6 +67,35 @@ pip install -r requirements-dev.txt
 .venv/Scripts/python -m pytest -q -m "not integration"
 ```
 
+## Reviewer console
+
+The console (`apps/web`) is a Next.js app for platform content editors and admins. It uses Tailwind and shadcn/ui components. Other users see a "No access" page. Login goes through the web app, which stores the API token in an httpOnly cookie (`tr_session`). The browser never sees the token.
+
+**Dev run** (API and Postgres already running):
+
+```bash
+cd apps/web
+npm ci
+API_URL=http://localhost:8000 COOKIE_SECURE=false npm run dev   # http://localhost:3000
+```
+
+`COOKIE_SECURE=false` is needed on plain http. The compose web container defaults to `COOKIE_SECURE=true`; for a local http run, export `COOKIE_SECURE=false` in the shell (or in `infra/.env`) before `podman compose` or `docker compose`. Create a reviewer with `python -m app.cli create-user ... --role platform_content_editor`.
+
+**API types.** `npm run gen:api` exports the API's OpenAPI document and generates `lib/api-client/schema.d.ts`. It runs `python`, so activate the API's environment first (with `pip install -e apps/api`). Commit both generated files when the API changes.
+
+**Tests:**
+
+```bash
+cd apps/web
+npm run lint && npm run typecheck && npm test && npm run build   # unit tests (Vitest)
+scripts/e2e-stack.sh                                             # from the repo root
+cd apps/web && npx playwright install chromium              # once per machine
+cd apps/web && npx playwright test                               # Playwright, axe checks
+cd ../.. && scripts/e2e-stack.sh stop
+```
+
+The e2e stack needs `DATABASE_URL` for a test database (it runs migrations there) and a Python with the API and worker installed (`PYTHON=...`, default `python`). It creates `admin@e2e.test`, `editor@e2e.test` and `pro@e2e.test` with the password in `E2E_PASSWORD` (default `e2e-only-password-2026`). Playwright runs on pull requests only in CI, to keep minutes low.
+
 ## Loading documents
 
 The worker loads PDF and HTML documents in three ways. Each load needs a `--source` code from `config/sources.yaml` and a `--doc-type` from `config/authority.yaml` (`notification`, `circular`, `instruction`, `order`, `judgement`, `act`, `rules`, `other`). Metadata options are optional. With enough of them (for example series, number and year for a notification) the document gets its real canonical ID; otherwise it gets a provisional `unk:` ID until classification (M3).
