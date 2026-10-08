@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    name: Python lint, type check, and tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install packages (editable mode)
+        run: |
+          # Install any packages that have pyproject.toml
+          find . -maxdepth 3 -name "pyproject.toml" -path "*/apps/*" -o -name "pyproject.toml" -path "*/packages/*" | \
+            xargs -I {} sh -c 'pip install -e "$(dirname {})"' || true
+
+      - name: Lint with ruff
+        run: |
+          ruff check .
+
+      - name: Format check with ruff
+        run: |
+          ruff format --check .
+
+      - name: Type check with mypy
+        run: |
+          mypy
+
+      - name: Test with pytest
+        run: |
+          pytest -m "not integration" --tb=short
+
+  web:
+    runs-on: ubuntu-latest
+    name: Web lint and type check
+    if: hashFiles('apps/web/package.json') != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix apps/web
+
+      - name: Lint
+        run: npm --prefix apps/web run lint
+
+      - name: Type check
+        run: npm --prefix apps/web run typecheck
+
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration tests
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taxresearch_test
+          POSTGRES_PASSWORD: test-password-ci
+          POSTGRES_DB: taxresearch_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Install packages (editable mode)
+        run: |
+          find . -maxdepth 3 -name "pyproject.toml" -path "*/apps/*" -o -name "pyproject.toml" -path "*/packages/*" | \
+            xargs -I {} sh -c 'pip install -e "$(dirname {})"' || true
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://taxresearch_test:test-password-ci@localhost:5432/taxresearch_test
+        run: |
+          pytest -m "integration" --tb=short

@@ -1,0 +1,95 @@
+# Source configuration (TSD section 5.3, FR-ING-01)
+# Defines data sources, connectors, and crawling schedules (P2)
+# In the POC, only manual file upload and fetch-by-URL are enabled
+
+sources:
+  - code: cbic_gst_portal
+    kind: manual
+    description: CBIC GST Portal - Notifications, Circulars, Instructions, Orders
+    enabled: true
+    release: MVP
+    # Scheduled crawling (P2) disabled; requires legal review of site terms (A-29)
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "POC: manual file upload + fetch-by-URL on admin request"
+
+  - code: supreme_court
+    kind: manual
+    description: Supreme Court website - Judgements and orders
+    enabled: true
+    release: MVP
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "POC: manual file upload + fetch-by-URL on admin request"
+
+  - code: high_courts
+    kind: manual
+    description: High Court websites - Writs and orders (state-wise)
+    enabled: true
+    release: MVP
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "POC: manual file upload + fetch-by-URL on admin request"
+
+  - code: gstat
+    kind: manual
+    description: GST Appellate Tribunal - Appeals and orders
+    enabled: true
+    release: MVP
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "POC: manual file upload + fetch-by-URL on admin request"
+
+  - code: e_gazette
+    kind: manual
+    description: e-Gazette - Cross-check for gazette references and dates
+    enabled: true
+    release: MVP
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "POC: manual file upload + fetch-by-URL on admin request"
+
+  - code: gst_council
+    kind: manual
+    description: GST Council website - Meeting material, press releases
+    enabled: false
+    release: P2
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "Deferred to P2"
+
+  - code: aar_aaar_portals
+    kind: manual
+    description: AAR/AAAR portals - Advance Rulings
+    enabled: false
+    release: P2
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "Deferred to P2"
+
+  - code: licensed_case_law
+    kind: api
+    description: Licensed case-law feed (vendor API)
+    enabled: false
+    release: P2
+    schedule_cron: null
+    expected_cadence_hours: null
+    note: "P2: Requires vendor contract and API adapter (FR-ING-12, A-2)"
+
+# Scraping rules (applies when scheduled crawling is enabled in P2)
+scraping:
+  # Rate limit per host
+  rate_limit_per_host_seconds: 2
+
+  # Identify with user agent
+  user_agent: "TaxResearch-POC/0.1 (+https://taxresearch.internal)"
+
+  # Retry with backoff
+  max_retries: 3
+  backoff_factor: 2
+
+  # Source health alert threshold
+  source_stopped_alert_hours: null  # Disabled in POC
+
+# TODO: Selector patterns per source (enabled when scheduled crawling is P2)
+# TODO: Legal review of scraping terms needed before enabling crawling (A-29, R-3)

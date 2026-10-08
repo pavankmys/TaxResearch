@@ -1,0 +1,74 @@
+# Authority rank table (FSD section 4, TSD 6.6)
+# Maps document types to binding authority levels and release phase
+
+authorities:
+  - rank: 1
+    name: Constitution
+    description: Constitutional provisions (Articles 246A, 269A, 279A, 286, 366(12A))
+    release: P2
+    binding: supreme
+
+  - rank: 2
+    name: Acts
+    description: CGST Act 2017, IGST Act 2017; amendments through Finance Acts
+    release: MVP
+    binding: binding_all
+    examples:
+      - CGST Act, 2017
+      - IGST Act, 2016
+
+  - rank: 3
+    name: Supreme Court
+    description: Supreme Court judgements and orders (interpretation and vires)
+    release: MVP
+    binding: binding_all
+
+  - rank: 4
+    name: Rules
+    description: CGST Rules 2017; other state and central rules
+    release: MVP
+    binding: binding_unless_struck
+
+  - rank: 5
+    name: Notifications
+    description: Rate, exemption, procedure, due-date, RCM notifications
+    release: MVP
+    binding: binding_delegated
+
+  - rank: 6
+    name: High Court
+    description: High Court writs and orders (ITC, refunds, procedure)
+    release: MVP
+    binding: binding_state_persuasive_other
+
+  - rank: 7
+    name: GSTAT
+    description: GST Appellate Tribunal orders and judgements
+    release: MVP
+    binding: binding_lower_authorities
+
+  - rank: 8
+    name: Circulars
+    description: CBIC circulars, instructions and orders (Section 168)
+    release: MVP
+    binding: bind_officers_only
+
+  - rank: 9
+    name: AAR/AAAR
+    description: Advance Rulings from AAR and AAAR
+    release: P2
+    binding: bind_applicant_persuasive
+
+  - rank: 10
+    name: Council Material
+    description: GST Council meeting material, FAQs, press releases
+    release: P2
+    binding: persuasive
+
+  - rank: 11
+    name: Firm Content
+    description: Internal opinions, precedents, private uploads
+    release: P2
+    binding: private_persuasive
+
+# TODO: Expand descriptions and add validation rules per rank

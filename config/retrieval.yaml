@@ -1,0 +1,44 @@
+# Retrieval ranking weights (TSD section 6.6)
+# Tune these values against the query-set performance metrics
+
+search:
+  page_size_default: 50
+  no_result_cap: true
+
+ranking:
+  # Authority weights by rank (1=Constitution to 11=Firm content)
+  # Starting values from TSD 6.6
+  authority_weights:
+    1: 1.30   # Constitution
+    2: 1.25   # Acts
+    3: 1.20   # Supreme Court
+    4: 1.15   # Rules
+    5: 1.12   # Notifications
+    6: 1.08   # High Courts
+    7: 1.05   # GSTAT
+    8: 1.00   # Circulars
+    9: 0.92   # AAR/AAAR (P2)
+    10: 0.88  # Council material (P2)
+    11: 0.85  # Firm content (P2)
+
+  # Jurisdiction weighting for High Court results
+  jurisdiction:
+    same_state_match: 1.15      # HC of user's state
+    other_state: 0.95           # HC of different state
+
+  # Recency boost for judgements and circulars (last 3 years)
+  recency:
+    min_boost: 1.00
+    max_boost: 1.05
+    # TODO: configure cutoff date range
+
+  # Status penalty (rescinded, superseded, struck down, stayed, withdrawn)
+  status_factors:
+    rescinded: 0.5
+    superseded: 0.5
+    struck_down: 0.5
+    stayed: 0.7
+    withdrawn: 0.7
+
+# TODO: Configure thresholds for metadata extraction confidence
+# (affects which documents go to review queue, TSD section 5.6)

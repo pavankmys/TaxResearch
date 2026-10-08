@@ -1,0 +1,71 @@
+# Query expansion: expert-maintained synonyms and abbreviations (TSD 6.4a, FR-RES-16)
+# These are shown to the user as 'also searched: ...' and can be toggled off
+# Maintained by domain experts (A-30)
+
+synonyms:
+  - term: ITC
+    expansions:
+      - Input Tax Credit
+      - input tax credit
+      - inward supply
+    kind: abbreviation
+    active: true
+
+  - term: RCM
+    expansions:
+      - Reverse Charge Mechanism
+      - reverse charge
+    kind: abbreviation
+    active: true
+
+  - term: HSN
+    expansions:
+      - Harmonized System of Nomenclature
+    kind: abbreviation
+    active: true
+
+  - term: SAC
+    expansions:
+      - Service Accounting Code
+    kind: abbreviation
+    active: true
+
+  - term: GSTIN
+    expansions:
+      - GST Identification Number
+    kind: abbreviation
+    active: true
+
+  - term: GSTR
+    expansions:
+      - GST Return
+    kind: abbreviation
+    active: true
+
+  - term: CBIC
+    expansions:
+      - Central Board of Indirect Taxes and Customs
+    kind: abbreviation
+    active: true
+
+  - term: GSTAT
+    expansions:
+      - GST Appellate Tribunal
+    kind: abbreviation
+    active: true
+
+  - term: AAR
+    expansions:
+      - Advance Authorised Ruling
+      - Advance Authority Ruling
+    kind: abbreviation
+    active: true
+
+  - term: DRC
+    expansions:
+      - Demand Reference Copy
+    kind: abbreviation
+    active: true
+
+  # TODO: Add more common GST terms and synonyms
+  # Full list is expert-maintained and tested with the query set

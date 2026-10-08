@@ -1,0 +1,60 @@
+# Citation alias table (TSD section 5.4, 6.3)
+# Maintained by domain experts; used by the citation parser for normalization
+# This is the MVP minimal set; full list is expert-maintained (A-26)
+
+# Notification series codes (commonly used in queries)
+notification_series:
+  - code: CT
+    aliases:
+      - Central Tax
+      - ct
+    description: Central Tax Notifications
+
+  - code: CT(R)
+    aliases:
+      - "Central Tax (Rate)"
+      - "ct(r)"
+      - "ctr"
+    description: Central Tax Rate Notifications
+
+  # TODO: Add remaining series (IT, IT(R), UT, UT(R), COMP, COMP(R))
+  # Full list to be confirmed at freeze (A-26)
+
+# Act abbreviations
+act_aliases:
+  - full_name: CGST Act, 2017
+    codes:
+      - CGST
+      - CGST Act
+      - central GST act
+    release: MVP
+
+  - full_name: IGST Act, 2016
+    codes:
+      - IGST
+      - IGST Act
+      - integrated GST act
+    release: MVP
+
+  # TODO: Add UTGST, Compensation Cess Act, Rules abbreviations
+
+# Rules abbreviations
+rules_aliases:
+  - full_name: CGST Rules, 2017
+    codes:
+      - CGST Rules
+      - cgst rules
+    release: MVP
+
+  - full_name: IGST Rules, 2017
+    codes:
+      - IGST Rules
+      - igst rules
+    release: MVP
+
+# Reporter case citations (for judgement lookup)
+# TODO: Add patterns for All India Reporter, Supreme Court Reporter, etc.
+reporters: []
+
+# TODO: Add case number patterns for SC, HC (state-wise), GSTAT, AAR
+case_number_patterns: []
