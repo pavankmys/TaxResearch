@@ -40,7 +40,18 @@ bash scripts/verify.sh
 
 Services run at: **Web** http://localhost:3000 · **API** http://localhost:8000
 
-### 3. Dev setup (optional, for local testing)
+### 3. Create the first admin user
+
+```bash
+podman compose -f infra/compose.yaml exec api python -m app.cli create-user --email you@example.com --display-name "Your Name" --role platform_admin
+
+# Check that the audit log hash chain is intact
+podman compose -f infra/compose.yaml exec api python -m app.cli verify-audit
+```
+
+The CLI asks for a password (at least 12 characters) twice. Set `TAXRESEARCH_PASSWORD` to skip the prompt.
+
+### 4. Dev setup (optional, for local testing)
 
 ```bash
 python -m venv .venv
@@ -48,7 +59,7 @@ python -m venv .venv
 pip install -r requirements-dev.txt
 ```
 
-### 4. Code quality
+### 5. Code quality
 
 ```bash
 .venv/Scripts/python -m ruff check .

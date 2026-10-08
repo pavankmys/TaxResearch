@@ -14,6 +14,8 @@ def setup_test_env() -> None:
     """Set up test environment with a dummy DATABASE_URL if not set."""
     if not os.getenv("DATABASE_URL"):
         os.environ["DATABASE_URL"] = "postgresql://test:test@localhost/test"
+    if not os.getenv("JWT_SECRET"):
+        os.environ["JWT_SECRET"] = "test-only-jwt-secret-0123456789abcdefghi"
 
 
 @pytest.fixture

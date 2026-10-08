@@ -24,6 +24,8 @@ pydantic-settings>=2.2
 sqlalchemy[asyncio]>=2.0.30
 alembic>=1.13
 psycopg[binary]>=3.1.18
+argon2-cffi>=23.1
+pyjwt>=2.8
 
 # Object store, config, parsing (used from later batches)
 boto3>=1.34

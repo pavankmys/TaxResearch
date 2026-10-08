@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +18,12 @@ class Settings(BaseSettings):
 
     # CORS configuration (comma-separated list)
     cors_origins: str = ""
+
+    # Auth (JWT session tokens and login rate limit)
+    jwt_secret: str = Field(..., min_length=32)
+    jwt_ttl_minutes: int = 480
+    login_max_failures: int = 5
+    login_window_seconds: int = 900
 
     class Config:
         """Pydantic config."""
