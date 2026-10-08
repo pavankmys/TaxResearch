@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-from .pdf_fixtures import born_digital
+from worker.testing.pdf_fixtures import born_digital
 
 _HARNESS = Path(__file__).resolve().parents[3] / "eval" / "extraction_recall.py"
 

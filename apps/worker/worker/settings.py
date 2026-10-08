@@ -19,12 +19,19 @@ class Settings(BaseSettings):
     s3_bucket: str = ""
     local_store_path: str = "./data"
 
-    # Watch folder for file uploads (POC only)
+    # Watch folder for file uploads (POC only). Container path is /watch.
     watch_folder: str = "./watch"
+    watch_poll_seconds: float = 5.0
 
     # Polling configuration
     poll_interval_seconds: float = 2.0
     stage_timeout_seconds: int = 900
+
+    # Retry backoff: a failed job waits retry_base_seconds * 2**(attempt-1) before rerunning
+    retry_base_seconds: int = 30
+
+    # Logging (LOG_LEVEL)
+    log_level: str = "INFO"
 
     class Config:
         """Pydantic config."""

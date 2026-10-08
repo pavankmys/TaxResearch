@@ -94,6 +94,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET}
       LOG_LEVEL: ${LOG_LEVEL}
+      WATCH_FOLDER: /watch
     volumes:
       - ./watch:/watch:Z
     restart: unless-stopped

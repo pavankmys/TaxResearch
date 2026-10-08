@@ -11,6 +11,13 @@ sources:
     # Scheduled crawling (P2) disabled; requires legal review of site terms (A-29)
     schedule_cron: null
     expected_cadence_hours: null
+    # Hosts a fetch-by-URL may use (official domains only, see TSD 5.2 / M2 decision 8)
+    allowed_hosts:
+      - cbic-gst.gov.in
+      - www.cbic-gst.gov.in
+      - cbic.gov.in
+      - www.cbic.gov.in
+      - taxinformation.cbic.gov.in
     note: "POC: manual file upload + fetch-by-URL on admin request"
 
   - code: supreme_court
@@ -20,6 +27,12 @@ sources:
     release: MVP
     schedule_cron: null
     expected_cadence_hours: null
+    # Hosts a fetch-by-URL may use (official domains only, see TSD 5.2 / M2 decision 8)
+    allowed_hosts:
+      - sci.gov.in
+      - www.sci.gov.in
+      - main.sci.gov.in
+      - api.sci.gov.in
     note: "POC: manual file upload + fetch-by-URL on admin request"
 
   - code: high_courts
@@ -29,6 +42,7 @@ sources:
     release: MVP
     schedule_cron: null
     expected_cadence_hours: null
+    allowed_hosts: []
     note: "POC: manual file upload + fetch-by-URL on admin request"
 
   - code: gstat
@@ -38,6 +52,7 @@ sources:
     release: MVP
     schedule_cron: null
     expected_cadence_hours: null
+    allowed_hosts: []
     note: "POC: manual file upload + fetch-by-URL on admin request"
 
   - code: e_gazette
@@ -47,6 +62,11 @@ sources:
     release: MVP
     schedule_cron: null
     expected_cadence_hours: null
+    # Hosts a fetch-by-URL may use (official domains only, see TSD 5.2 / M2 decision 8)
+    allowed_hosts:
+      - egazette.gov.in
+      - www.egazette.gov.in
+      - egazette.nic.in
     note: "POC: manual file upload + fetch-by-URL on admin request"
 
   - code: gst_council
@@ -56,6 +76,7 @@ sources:
     release: P2
     schedule_cron: null
     expected_cadence_hours: null
+    allowed_hosts: []
     note: "Deferred to P2"
 
   - code: aar_aaar_portals
@@ -65,6 +86,7 @@ sources:
     release: P2
     schedule_cron: null
     expected_cadence_hours: null
+    allowed_hosts: []
     note: "Deferred to P2"
 
   - code: licensed_case_law
@@ -74,6 +96,7 @@ sources:
     release: P2
     schedule_cron: null
     expected_cadence_hours: null
+    allowed_hosts: []
     note: "P2: Requires vendor contract and API adapter (FR-ING-12, A-2)"
 
 # Scraping rules (applies when scheduled crawling is enabled in P2)

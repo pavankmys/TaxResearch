@@ -67,6 +67,40 @@ pip install -r requirements-dev.txt
 .venv/Scripts/python -m pytest -q -m "not integration"
 ```
 
+## Loading documents
+
+The worker loads PDF and HTML documents in three ways. Each load needs a `--source` code from `config/sources.yaml` and a `--doc-type` from `config/authority.yaml` (`notification`, `circular`, `instruction`, `order`, `judgement`, `act`, `rules`, `other`). Metadata options are optional. With enough of them (for example series, number and year for a notification) the document gets its real canonical ID; otherwise it gets a provisional `unk:` ID until classification (M3).
+
+**Watch folder.** Copy a file to `infra/watch/<source_code>/<doc_type>/<file>`, for example `infra/watch/cbic_gst_portal/notification/ct11-2017.pdf`. The worker checks the folder every few seconds. When a file has stopped changing it moves the file to `.done/<yyyymmdd>/` and loads it. A file that cannot be loaded goes to `.failed/` with a `<name>.reason.txt` beside it.
+
+**CLI** (run inside the worker container):
+
+```bash
+podman compose -f infra/compose.yaml exec worker python -m worker.cli ingest-url \
+  https://www.cbic-gst.gov.in/gst/notifications/ct11-2017.pdf \
+  --source cbic_gst_portal --doc-type notification --series CT --number 11 --year 2017
+
+podman compose -f infra/compose.yaml exec worker python -m worker.cli ingest-file \
+  /watch/cbic_gst_portal/notification/ct11-2017.pdf \
+  --source cbic_gst_portal --doc-type notification --series CT --number 11 --year 2017
+
+podman compose -f infra/compose.yaml exec worker python -m worker.cli job-status <ingestion-job-id>
+```
+
+Each command prints the ingestion job id. Fetch-by-URL only accepts `http` and `https` URLs on the hosts listed for the source in `config/sources.yaml`. Downloads are capped at 50 MB and private addresses are refused.
+
+**API** (needs `ingest.submit`; reading needs `ingest.read`):
+
+```bash
+curl -X POST http://localhost:8000/v1/platform/ingestion/url \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"source": "cbic_gst_portal", "doc_type": "notification", "url": "https://www.cbic-gst.gov.in/gst/notifications/ct11-2017.pdf", "series": "CT", "number": 11, "year": "2017"}'
+
+curl http://localhost:8000/v1/platform/ingestion/jobs/<ingestion-job-id> -H "Authorization: Bearer $TOKEN"
+```
+
+The POST returns `202` with `ingestion_job_id`. File upload through the API is deferred to M3.
+
 ## Data rules
 
 - **Public documents only** in the POC: CGST Act, IGST Act, notifications, circulars, SC/HC/GSTAT judgements (1 July 2017 onwards).

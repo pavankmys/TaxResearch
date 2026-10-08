@@ -1,0 +1,38 @@
+# Ingestion settings (M2, TSD 5.5 and 5.2). Read by apps/worker/worker/config.py.
+# Thresholds are starting values; tune them against eval/ results, not by guesswork.
+
+# Parsing thresholds (used by the parse stage)
+parse:
+  # Minimum extracted characters per square point of page area for a page to pass the
+  # text-layer test (a page under this density is treated as image-only).
+  min_chars_per_page_area: 0.00002
+  # Allowed relative difference between the two text engines (pypdfium2 and pdfplumber).
+  cross_check_margin: 0.05
+  # Garble score above which a page's text is considered unreliable.
+  garble_threshold: 0.15
+  # Minimum mean Tesseract word confidence (0-100) for an OCR page to be accepted.
+  min_ocr_conf: 60
+  # Render resolution for OCR.
+  ocr_dpi: 300
+  # Tesseract language pack.
+  ocr_lang: eng
+  # Set to false to skip OCR entirely (pages that need it are flagged instead).
+  ocr_enabled: true
+
+# Fetch-by-URL limits (fetch.py)
+fetch:
+  # Refuse downloads larger than this many bytes (50 MB).
+  max_bytes: 52428800
+  # Connect, read and total timeout for each request, in seconds.
+  timeout_seconds: 60
+  # Only these media types are accepted from a URL. Anything else is refused.
+  allowed_content_types:
+    - application/pdf
+    - text/html
+    - application/xhtml+xml
+
+# Watch folder (watch.py)
+watch:
+  # A file is loaded once its size and modification time are unchanged across this many
+  # consecutive scans. Protects against loading a file that is still being copied in.
+  stable_scans: 2

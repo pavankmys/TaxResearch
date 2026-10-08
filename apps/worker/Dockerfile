@@ -21,6 +21,7 @@ COPY apps/worker/pyproject.toml /app/
 COPY apps/worker/worker /app/worker
 COPY packages/legal-core /app/packages/legal-core
 COPY scripts /app/scripts
+COPY config /app/config
 
 # Install dependencies
 RUN pip install --no-cache-dir \
@@ -40,6 +41,7 @@ USER appuser
 # Default environment
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV CONFIG_DIR=/app/config
 
 # Run the worker
 CMD ["sh", "-c", "python scripts/wait_for_db.py --wait-for-table job_queue && python -m worker"]

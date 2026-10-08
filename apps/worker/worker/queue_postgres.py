@@ -1,5 +1,6 @@
 """PostgreSQL job queue implementation using SELECT ... FOR UPDATE SKIP LOCKED."""
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -22,6 +23,11 @@ class PostgresJobQueue(JobQueue):
         """
         self._engine = engine
         self._max_attempts = max_attempts
+
+    @property
+    def max_attempts(self) -> int:
+        """Attempts allowed before a job is marked failed for good."""
+        return self._max_attempts
 
     def enqueue(
         self,
@@ -62,14 +68,15 @@ class PostgresJobQueue(JobQueue):
                     INSERT INTO job_queue
                     (id, queue, payload, status, attempts, max_attempts, run_after,
                      idempotency_key, created_at, updated_at)
-                    VALUES (:id, :queue, :payload, :status, :attempts, :max_attempts,
-                            :run_after, :idempotency_key, :created_at, :updated_at)
+                    VALUES (:id, :queue, CAST(:payload AS JSON), :status, :attempts,
+                            :max_attempts, :run_after, :idempotency_key, :created_at,
+                            :updated_at)
                     """
                 ),
                 {
                     "id": job_id,
                     "queue": queue,
-                    "payload": payload,
+                    "payload": json.dumps(payload),
                     "status": "queued",
                     "attempts": 0,
                     "max_attempts": self._max_attempts,
@@ -147,7 +154,7 @@ class PostgresJobQueue(JobQueue):
             import json
 
             return Job(
-                id=row[0],
+                id=str(row[0]),
                 queue=row[1],
                 payload=json.loads(row[2]) if isinstance(row[2], str) else row[2],
                 attempts=row[3],

@@ -72,3 +72,16 @@ authorities:
     binding: private_persuasive
 
 # TODO: Expand descriptions and add validation rules per rank
+
+# Document type to authority rank (M2). A loader requires one of these doc_type values.
+# judgement is 3 for the Supreme Court; High Court judgements are 6 and GSTAT judgements
+# are 7. M3's classifier refines judgements by court.
+doc_types:
+  notification: 5
+  circular: 8
+  instruction: 8
+  order: 8
+  judgement: 3
+  act: 2
+  rules: 4
+  other: 11

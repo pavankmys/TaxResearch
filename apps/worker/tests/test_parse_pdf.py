@@ -4,8 +4,7 @@ import pytest
 from worker.ingest.ocr import tesseract_available
 from worker.ingest.pdf import parse_pdf
 from worker.ingest.types import ParseConfig
-
-from .pdf_fixtures import born_digital, cid_garbled, scanned, two_column, with_table
+from worker.testing.pdf_fixtures import born_digital, cid_garbled, scanned, two_column, with_table
 
 _LONG = " ".join(["The rate of tax on the supply of goods shall be as notified"] * 6) + "."
 

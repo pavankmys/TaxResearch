@@ -3,8 +3,10 @@
 from collections.abc import Iterable
 
 PERMISSIONS: dict[str, frozenset[str]] = {
-    "platform_admin": frozenset({"users.read", "users.manage", "audit.read"}),
-    "platform_content_editor": frozenset(),
+    "platform_admin": frozenset(
+        {"users.read", "users.manage", "audit.read", "ingest.submit", "ingest.read"}
+    ),
+    "platform_content_editor": frozenset({"ingest.submit", "ingest.read"}),
     "firm_admin": frozenset(),
     "partner": frozenset(),
     "professional": frozenset(),

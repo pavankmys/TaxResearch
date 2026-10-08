@@ -20,6 +20,12 @@ class Job:
 class JobQueue(ABC):
     """Abstract base class for job queue implementations."""
 
+    @property
+    @abstractmethod
+    def max_attempts(self) -> int:
+        """Attempts allowed before a job is marked failed for good (poisoned)."""
+        pass
+
     @abstractmethod
     def enqueue(
         self,

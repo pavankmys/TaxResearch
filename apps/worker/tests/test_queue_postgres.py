@@ -2,39 +2,60 @@
 
 import os
 import threading
+from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, text
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.fixture
-def db_url() -> str:
-    """Get the database URL, skip test if not set."""
+REPO_ROOT = Path(__file__).resolve().parents[3]
+API_ROOT = REPO_ROOT / "apps" / "api"
+
+
+@pytest.fixture(scope="module")
+def migrated_db_url() -> Iterator[str]:
+    """Migrate the test database to head once per module and yield its SQLAlchemy URL.
+
+    Skips unless DATABASE_URL points at a real database. Module scope because the API
+    migration test downgrades to base.
+    """
     url = os.environ.get("DATABASE_URL", "")
-    if not url or "localhost/test" in url:
+    if not url or "localhost/test" in url or "test:test@" in url:
         pytest.skip("DATABASE_URL not set to a real database; skipping integration tests")
-    return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("DATABASE_URL", url)
+        config = Config(str(API_ROOT / "alembic.ini"))
+        config.set_main_option("script_location", str(API_ROOT / "alembic"))
+        command.upgrade(config, "head")
+    yield url
+
+
+@pytest.fixture
+def db_url(migrated_db_url: str) -> str:
+    """The migrated test database URL."""
+    return migrated_db_url
 
 
 @pytest.fixture
 def engine(db_url: str) -> object:
-    """Create a database engine and ensure the job_queue table exists."""
+    """Create a database engine for the migrated database."""
     engine = create_engine(db_url)
-
-    # Ensure the table exists by running migrations
-    # For now, we'll assume the migration has been run
-    from sqlalchemy import inspect
-
-    inspector = inspect(engine)
-    if "job_queue" not in inspector.get_table_names():
-        pytest.skip("job_queue table not found; migrations not run")
-
     yield engine
-
     engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def clean_test_queue(engine: object) -> None:
+    """Remove leftover rows from earlier runs so each test starts with an empty queue."""
+    with engine.begin() as conn:  # type: ignore
+        conn.execute(text("DELETE FROM job_queue WHERE queue = 'test_queue'"))
 
 
 def test_postgres_enqueue_and_claim(engine: object) -> None:

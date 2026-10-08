@@ -23,6 +23,11 @@ class InMemoryJobQueue(JobQueue):
         self._lock = threading.RLock()
         self._max_attempts = max_attempts
 
+    @property
+    def max_attempts(self) -> int:
+        """Attempts allowed before a job is marked failed for good."""
+        return self._max_attempts
+
     def enqueue(
         self,
         queue: str,

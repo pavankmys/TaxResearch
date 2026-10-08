@@ -81,6 +81,7 @@ def test_ocr_smoke_full_pipeline() -> None:
     # Check tesseract is available
     if not shutil.which("tesseract"):
         pytest.skip("tesseract-ocr not found on PATH")
+    pytest.importorskip("ocrmypdf", reason="ocrmypdf is installed in the worker image only")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)

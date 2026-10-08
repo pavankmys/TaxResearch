@@ -1,8 +1,10 @@
 """Tests for the Runner class."""
 
 import threading
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from worker.errors import PermanentError
 from worker.queue_memory import InMemoryJobQueue
 from worker.runner import Runner
 
@@ -38,7 +40,7 @@ def test_run_once_returns_false_when_no_jobs() -> None:
 
 
 def test_run_once_handles_handler_exception() -> None:
-    """Test that run_once catches handler exceptions and marks job as failed."""
+    """A handler exception is recorded and the job is queued again for a retry."""
     queue = InMemoryJobQueue()
 
     def failing_handler(job: Any) -> None:
@@ -50,8 +52,106 @@ def test_run_once_handles_handler_exception() -> None:
     result = runner.run_once()
 
     assert result is True
-    assert queue._jobs[job_id]["status"] == "failed"
+    assert queue._jobs[job_id]["status"] == "queued"
+    assert queue._jobs[job_id]["run_after"] > datetime.now(UTC)
     assert "Handler error" in queue._jobs[job_id]["last_error"]
+
+
+class RecordingQueue(InMemoryJobQueue):
+    """InMemoryJobQueue that records the retry delay passed to each fail call."""
+
+    def __init__(self, max_attempts: int = 3) -> None:
+        super().__init__(max_attempts=max_attempts)
+        self.retry_delays: list[int | None] = []
+
+    def fail(self, job_id: str, error: str, *, retry_in_seconds: int | None = None) -> None:
+        self.retry_delays.append(retry_in_seconds)
+        super().fail(job_id, error, retry_in_seconds=retry_in_seconds)
+
+
+def _make_due(queue: InMemoryJobQueue, job_id: str) -> None:
+    """Move a queued job's run_after into the past so the next claim picks it up."""
+    queue._jobs[job_id]["run_after"] = datetime.now(UTC) - timedelta(seconds=1)
+
+
+def test_retries_back_off_exponentially_then_poison() -> None:
+    """Attempts 1 and 2 retry after 30 and 60 seconds; attempt 3 poisons the job."""
+    queue = RecordingQueue(max_attempts=3)
+
+    def failing_handler(job: Any) -> None:
+        raise RuntimeError("flaky")
+
+    job_id = queue.enqueue("test", {})
+    runner = Runner(queue, {"test": failing_handler}, "worker1", retry_base_seconds=30)
+
+    for _ in range(3):
+        _make_due(queue, job_id)
+        assert runner.run_once() is True
+
+    assert queue.retry_delays == [30, 60, None]
+    assert queue._jobs[job_id]["status"] == "failed"
+    assert queue._jobs[job_id]["attempts"] == 3
+    assert runner.run_once() is False
+
+
+def test_retry_base_is_configurable() -> None:
+    """The backoff base comes from the runner's retry_base_seconds."""
+    queue = RecordingQueue(max_attempts=5)
+
+    def failing_handler(job: Any) -> None:
+        raise RuntimeError("flaky")
+
+    job_id = queue.enqueue("test", {})
+    runner = Runner(queue, {"test": failing_handler}, "worker1", retry_base_seconds=5)
+
+    for _ in range(3):
+        _make_due(queue, job_id)
+        runner.run_once()
+
+    assert queue.retry_delays == [5, 10, 20]
+
+
+def test_single_attempt_queue_poisons_immediately() -> None:
+    """With max_attempts=1 the first failure is final."""
+    queue = RecordingQueue(max_attempts=1)
+
+    def failing_handler(job: Any) -> None:
+        raise RuntimeError("boom")
+
+    job_id = queue.enqueue("test", {})
+    Runner(queue, {"test": failing_handler}, "worker1").run_once()
+
+    assert queue.retry_delays == [None]
+    assert queue._jobs[job_id]["status"] == "failed"
+
+
+def test_permanent_error_is_never_retried() -> None:
+    """A PermanentError fails the job at once, even on the first attempt."""
+    queue = RecordingQueue(max_attempts=3)
+
+    def refusing_handler(job: Any) -> None:
+        raise PermanentError("file not found")
+
+    job_id = queue.enqueue("test", {})
+    Runner(queue, {"test": refusing_handler}, "worker1").run_once()
+
+    assert queue.retry_delays == [None]
+    assert queue._jobs[job_id]["status"] == "failed"
+    assert queue._jobs[job_id]["attempts"] == 1
+    assert queue._jobs[job_id]["last_error"] == "file not found"
+
+
+def test_empty_exception_message_falls_back_to_class_name() -> None:
+    """An exception with no message is still recorded with its class name."""
+    queue = RecordingQueue(max_attempts=1)
+
+    def failing_handler(job: Any) -> None:
+        raise KeyError()
+
+    job_id = queue.enqueue("test", {})
+    Runner(queue, {"test": failing_handler}, "worker1").run_once()
+
+    assert queue._jobs[job_id]["last_error"] == "KeyError"
 
 
 def test_run_once_truncates_error_message() -> None:

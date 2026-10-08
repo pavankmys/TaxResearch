@@ -37,3 +37,5 @@ python-dotenv>=1.0
 pillow>=10.1
 pypdfium2>=4.30
 pdfplumber>=0.11
+# Builds synthetic PDF fixtures in tests
+fpdf2>=2.7

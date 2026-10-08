@@ -19,6 +19,7 @@ COPY apps/api/alembic /app/alembic
 COPY apps/api/alembic.ini /app/
 COPY packages/legal-core /app/packages/legal-core
 COPY scripts /app/scripts
+COPY config /app/config
 
 # Install dependencies
 RUN pip install --no-cache-dir -e . && \
@@ -37,6 +38,7 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
 # Default environment
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV CONFIG_DIR=/app/config
 
 # Run the application
 CMD ["sh", "-c", "python scripts/wait_for_db.py && alembic upgrade head && uvicorn --factory app.main:create_app --host 0.0.0.0 --port 8000"]
