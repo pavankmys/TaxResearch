@@ -92,7 +92,7 @@ start_stack() {
   create_user pro@e2e.test "E2E Professional" professional
 
   echo "starting the API"
-  (cd "$API_DIR" && exec "$PYTHON_BIN" -m uvicorn --factory app.main:create_app --port 8000) \
+  (cd "$API_DIR" && OBJECT_STORE=local LOCAL_STORE_PATH="$STATE_DIR/store" exec "$PYTHON_BIN" -m uvicorn --factory app.main:create_app --port 8000) \
     > "$LOG_DIR/api.log" 2>&1 &
   echo "api $!" >> "$PID_FILE"
 
