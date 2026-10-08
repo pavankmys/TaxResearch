@@ -5,6 +5,7 @@ nearest ``config/`` directory that holds ``sources.yaml`` above this file.
 """
 
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -13,8 +14,27 @@ from typing import Any
 import yaml
 
 VALID_SOURCE_KINDS = frozenset({"html_list", "rss", "api", "manual"})
+VALID_COURT_LEVELS = frozenset({"SC", "HC", "GSTAT", "AAR", "AAAR"})
 MIN_RANK = 1
 MAX_RANK = 11
+
+
+@dataclass(frozen=True)
+class CourtConfig:
+    """One entry of config/courts.yaml."""
+
+    code: str
+    name: str
+    level: str
+    patterns: tuple[re.Pattern[str], ...]
+
+
+@dataclass(frozen=True)
+class CaseNumberPattern:
+    """One entry of citation_aliases.yaml case_number_patterns (named groups: number, year)."""
+
+    abbr: str
+    pattern: re.Pattern[str]
 
 
 @dataclass(frozen=True)
@@ -192,8 +212,68 @@ def load_ingestion_config() -> IngestionConfig:
     )
 
 
+@lru_cache(maxsize=1)
+def load_courts() -> dict[str, CourtConfig]:
+    """Load config/courts.yaml, keyed by court code (DRAFT, A-26)."""
+    data = _load_mapping("courts.yaml")
+    entries = data.get("courts")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("courts.yaml: 'courts' must be a non-empty list")
+    courts: dict[str, CourtConfig] = {}
+    for index, entry in enumerate(entries):
+        where = f"courts.yaml courts[{index}]"
+        if not isinstance(entry, dict):
+            raise ValueError(f"{where} must be a mapping")
+        code = entry.get("code")
+        name = entry.get("name")
+        level = entry.get("level")
+        if not isinstance(code, str) or not re.fullmatch(r"[A-Z]{2,5}(?:-[A-Z]{2})?", code):
+            raise ValueError(f"{where}: 'code' must be a court code such as SC or HC-KA")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"{where}: 'name' must be a non-empty string")
+        if level not in VALID_COURT_LEVELS:
+            raise ValueError(f"{where}: level must be one of {sorted(VALID_COURT_LEVELS)}")
+        if code in courts:
+            raise ValueError(f"courts.yaml: duplicate court code '{code}'")
+        patterns = _str_list(entry.get("patterns"), f"{where} patterns")
+        if not patterns:
+            raise ValueError(f"{where}: 'patterns' must not be empty")
+        compiled = tuple(
+            re.compile(re.escape(p).replace(r"\ ", r"\s+"), re.IGNORECASE) for p in patterns
+        )
+        courts[code] = CourtConfig(code=code, name=name, level=level, patterns=compiled)
+    return courts
+
+
+@lru_cache(maxsize=1)
+def load_case_number_patterns() -> tuple[CaseNumberPattern, ...]:
+    """Load case_number_patterns from config/citation_aliases.yaml (DRAFT, A-26)."""
+    data = _load_mapping("citation_aliases.yaml")
+    entries = data.get("case_number_patterns")
+    if not isinstance(entries, list):
+        raise ValueError("citation_aliases.yaml: 'case_number_patterns' must be a list")
+    patterns: list[CaseNumberPattern] = []
+    for index, entry in enumerate(entries):
+        where = f"citation_aliases.yaml case_number_patterns[{index}]"
+        if not isinstance(entry, dict):
+            raise ValueError(f"{where} must be a mapping")
+        abbr = entry.get("abbr")
+        pattern = entry.get("pattern")
+        if not isinstance(abbr, str) or not abbr:
+            raise ValueError(f"{where}: 'abbr' must be a non-empty string")
+        if not isinstance(pattern, str):
+            raise ValueError(f"{where}: 'pattern' must be a string")
+        compiled = re.compile(pattern, re.IGNORECASE)
+        if not {"number", "year"} <= set(compiled.groupindex):
+            raise ValueError(f"{where}: pattern needs named groups number and year")
+        patterns.append(CaseNumberPattern(abbr=abbr, pattern=compiled))
+    return tuple(patterns)
+
+
 def clear_caches() -> None:
     """Forget loaded config (used by tests that change CONFIG_DIR)."""
     load_sources.cache_clear()
     load_doc_type_ranks.cache_clear()
     load_ingestion_config.cache_clear()
+    load_courts.cache_clear()
+    load_case_number_patterns.cache_clear()

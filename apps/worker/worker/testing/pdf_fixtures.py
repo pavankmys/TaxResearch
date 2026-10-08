@@ -44,9 +44,16 @@ def born_digital(
     pages: int = 2,
     header: str = "CBIC Notification",
     footer_with_page_numbers: bool = True,
+    title: str = "",
 ) -> bytes:
-    """A text-layer PDF. Paragraphs are spread over the pages in order."""
+    """A text-layer PDF. Paragraphs are spread over the pages in order.
+
+    ``title`` only sets the PDF document title, so two calls with the same text and different
+    titles give different bytes and the same extracted text.
+    """
     pdf = _new_pdf()
+    if title:
+        pdf.set_title(title)
     for page_no, chunk in enumerate(_chunks(paragraphs, pages), start=1):
         pdf.add_page()
         _header_footer(pdf, header, page_no, footer_with_page_numbers)

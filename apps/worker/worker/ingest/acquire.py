@@ -111,8 +111,20 @@ def _read_input(
     source_code: str,
     transport: httpx.BaseTransport | None,
     resolver: Resolver | None,
+    store: ObjectStore,
 ) -> tuple[bytes, str, str]:
-    """Return (bytes, mime, source url recorded in document_sources)."""
+    """Return (bytes, mime, source url recorded in document_sources).
+
+    An upload (object_key set) reads the bytes the API stored in the object store.
+    """
+    if req.object_key:
+        if not req.file_name:
+            raise PermanentError("an upload needs a file_name")
+        if not store.exists(req.object_key):
+            raise PermanentError(f"uploaded object not found: {req.object_key}")
+        data = store.get(req.object_key)
+        name = Path(req.file_name).name
+        return data, sniff_mime(data), f"upload://{name}"
     if req.file_path:
         path = Path(req.file_path)
         if not path.is_file():
@@ -151,7 +163,7 @@ def _acquire(
     except ValueError as exc:
         raise PermanentError(str(exc)) from exc
 
-    data, mime, source_url = _read_input(req, source.code, transport, resolver)
+    data, mime, source_url = _read_input(req, source.code, transport, resolver, store)
     sha = hashlib.sha256(data).hexdigest()
     key = raw_key(sha)
     if not store.exists(key):

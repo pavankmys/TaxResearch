@@ -1,0 +1,7 @@
+"""Queue names for the ingestion stages (acquire and parse live in loaders.py)."""
+
+CLASSIFY_QUEUE = "ingest.classify"
+SEGMENT_QUEUE = "ingest.segment"
+EXTRACT_META_QUEUE = "ingest.extract_meta"
+APPLY_METADATA_QUEUE = "ingest.apply_metadata"
+PUBLISH_QUEUE = "ingest.publish"

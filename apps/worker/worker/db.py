@@ -40,6 +40,15 @@ documents = sa.Table(
     sa.Column("status", sa.Text, nullable=False),
     sa.Column("review_state", sa.Text, nullable=False),
     sa.Column("current_version_id", _uuid, nullable=True),
+    sa.Column("issuing_authority", sa.Text, nullable=True),
+    sa.Column("number", sa.Text, nullable=True),
+    sa.Column("series", sa.Text, nullable=True),
+    sa.Column("doc_date", sa.Date, nullable=True),
+    sa.Column("in_force_date", sa.Date, nullable=True),
+    sa.Column("court", sa.Text, nullable=True),
+    sa.Column("bench", sa.Text, nullable=True),
+    sa.Column("metadata", postgresql.JSONB, nullable=False),
+    sa.Column("meta_confidence", sa.REAL, nullable=True),
     sa.Column("updated_at", _ts, nullable=False),
 )
 
@@ -69,6 +78,10 @@ document_versions = sa.Table(
     sa.Column("ocr_used", sa.Boolean, nullable=False),
     sa.Column("ocr_conf", sa.REAL, nullable=True),
     sa.Column("parsed_at", _ts, nullable=True),
+    sa.Column("segmenter_version", sa.Text, nullable=True),
+    sa.Column("segmented_at", _ts, nullable=True),
+    sa.Column("extractor_version", sa.Text, nullable=True),
+    sa.Column("extracted_at", _ts, nullable=True),
     sa.Column("created_at", _ts, nullable=False),
     sa.Column("updated_at", _ts, nullable=False),
 )
@@ -129,6 +142,7 @@ ingestion_jobs = sa.Table(
     sa.Column("started_at", _ts, nullable=True),
     sa.Column("finished_at", _ts, nullable=True),
     sa.Column("discovered_at", _ts, nullable=False),
+    sa.Column("published_at", _ts, nullable=True),
     sa.Column("updated_at", _ts, nullable=False),
 )
 
@@ -140,9 +154,90 @@ review_tasks = sa.Table(
     sa.Column("subject_type", sa.Text, nullable=False),
     sa.Column("subject_id", _uuid, nullable=True),
     sa.Column("priority", sa.SmallInteger, nullable=False),
+    sa.Column("assignee_id", _uuid, nullable=True),
     sa.Column("status", sa.Text, nullable=False),
     sa.Column("opened_at", _ts, nullable=False),
     sa.Column("resolution", postgresql.JSONB, nullable=True),
+    sa.Column("created_at", _ts, nullable=False),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
+users = sa.Table(
+    "users",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True),
+    sa.Column("status", sa.Text, nullable=False),
+)
+
+roles = sa.Table(
+    "roles",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True),
+    sa.Column("code", sa.Text, nullable=False),
+)
+
+user_roles = sa.Table(
+    "user_roles",
+    metadata,
+    sa.Column("user_id", _uuid, primary_key=True),
+    sa.Column("role_id", _uuid, primary_key=True),
+)
+
+document_status_history = sa.Table(
+    "document_status_history",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("document_id", _uuid, nullable=False),
+    sa.Column("status", sa.Text, nullable=False),
+    sa.Column("valid_from", sa.Date, nullable=False),
+    sa.Column("valid_to", sa.Date, nullable=True),
+    sa.Column("set_by", _uuid, nullable=True),
+)
+
+corpus_versions = sa.Table(
+    "corpus_versions",
+    metadata,
+    sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
+    sa.Column("reason", sa.Text, nullable=False),
+)
+
+notifications = sa.Table(
+    "notifications",
+    metadata,
+    sa.Column("document_id", _uuid, primary_key=True),
+    sa.Column("series", sa.Text, nullable=False),
+    sa.Column("number", sa.Text, nullable=False),
+    sa.Column("year", sa.SmallInteger, nullable=False),
+    sa.Column("issue_date", sa.Date, nullable=True),
+    sa.Column("effective_date", sa.Date, nullable=True),
+    sa.Column("gazette_ref", sa.Text, nullable=True),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
+circulars = sa.Table(
+    "circulars",
+    metadata,
+    sa.Column("document_id", _uuid, primary_key=True),
+    sa.Column("kind", sa.Text, nullable=False),
+    sa.Column("number", sa.Text, nullable=False),
+    sa.Column("issue_date", sa.Date, nullable=True),
+    sa.Column("subject", sa.Text, nullable=True),
+    sa.Column("din", sa.Text, nullable=True),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
+judgements = sa.Table(
+    "judgements",
+    metadata,
+    sa.Column("document_id", _uuid, primary_key=True),
+    sa.Column("court_level", sa.Text, nullable=False),
+    sa.Column("court_name", sa.Text, nullable=False),
+    sa.Column("bench", sa.Text, nullable=True),
+    sa.Column("judges", sa.ARRAY(sa.Text), nullable=False),
+    sa.Column("decision_date", sa.Date, nullable=True),
+    sa.Column("parties", postgresql.JSONB, nullable=False),
+    sa.Column("reporter_citations", sa.ARRAY(sa.Text), nullable=False),
+    sa.Column("case_numbers", sa.ARRAY(sa.Text), nullable=False),
     sa.Column("updated_at", _ts, nullable=False),
 )
 
@@ -365,8 +460,11 @@ def open_review_task(
     subject_type: str,
     subject_id: UUID | None,
     resolution: dict[str, Any] | None = None,
+    *,
+    priority: int = 3,
+    assignee_id: UUID | None = None,
 ) -> UUID:
-    """Open a review task (status open) and return its id."""
+    """Open a review task (status open) and return its id. Use review.open_review_task."""
     now = _now()
     stmt = (
         review_tasks.insert()
@@ -374,10 +472,12 @@ def open_review_task(
             kind=kind,
             subject_type=subject_type,
             subject_id=subject_id,
-            priority=3,
+            priority=priority,
+            assignee_id=assignee_id,
             status="open",
             opened_at=now,
             resolution=resolution,
+            created_at=now,
             updated_at=now,
         )
         .returning(review_tasks.c.id)

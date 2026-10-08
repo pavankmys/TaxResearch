@@ -1,0 +1,22 @@
+// Leading numbering of an Act or Rules block (TSD 5.5). Read by worker/ingest/numbering.py.
+//
+// The parser reads the markers at the start of a block, in order, and stops at the first
+// character that is not a marker. Everything after that is one TAIL token. Marker terminals
+// have a higher priority than TAIL, so a marker wins whenever both could match.
+//
+// Roman versus letter sub-items (i) is decided by the segmenter, not here: both are PAREN.
+
+start: _marker* TAIL?
+
+_marker: CHAPTER | NUMBER | PAREN | PROVISO | EXPLANATION | FORM | ANNEX
+
+CHAPTER.5: /CHAPTER[ \t]+[IVXLC]+\b/
+PROVISO.4: /Provided[ \t]+(?:further[ \t]+)?that\b/
+EXPLANATION.4: /Explanation(?:[ \t]+\d+|(?=[ \t]*[.\-—:]))/
+FORM.4: /FORM[ \t]+[A-Z][A-Z0-9\-]*(?:[ \t]+[A-Z][A-Z0-9\-]*)?\b/
+ANNEX.4: /ANNEXURE(?:[ \t]+[A-Z0-9]+)?\b/
+NUMBER.3: /\d{1,3}[A-Z]{0,2}\.(?=[ \t—\-(]|$)/
+PAREN.3: /\((?:\d{1,3}[A-Z]{0,2}|[a-z]{1,4})\)/
+TAIL.0: /.+/s
+
+%ignore /[ \t]+/

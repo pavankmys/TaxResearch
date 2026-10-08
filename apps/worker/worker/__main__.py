@@ -13,6 +13,18 @@ from sqlalchemy.engine import Engine
 
 from worker.config import load_ingestion_config
 from worker.ingest.acquire import make_acquire_handler
+from worker.ingest.apply_metadata import make_apply_metadata_handler
+from worker.ingest.classify import make_classify_handler
+from worker.ingest.extract_meta import make_extract_meta_handler
+from worker.ingest.publish import make_publish_handler
+from worker.ingest.queues import (
+    APPLY_METADATA_QUEUE,
+    CLASSIFY_QUEUE,
+    EXTRACT_META_QUEUE,
+    PUBLISH_QUEUE,
+    SEGMENT_QUEUE,
+)
+from worker.ingest.segment import make_segment_handler
 from worker.objectstore import ObjectStore, make_object_store
 from worker.queue import Job
 from worker.queue_postgres import PostgresJobQueue
@@ -76,6 +88,11 @@ def main() -> None:
     parse_handler = _parse_handler(engine, store)
     if parse_handler is not None:
         handlers["ingest.parse"] = parse_handler
+    handlers[CLASSIFY_QUEUE] = make_classify_handler(engine, store)
+    handlers[SEGMENT_QUEUE] = make_segment_handler(engine, store)
+    handlers[EXTRACT_META_QUEUE] = make_extract_meta_handler(engine, store)
+    handlers[APPLY_METADATA_QUEUE] = make_apply_metadata_handler(engine, store)
+    handlers[PUBLISH_QUEUE] = make_publish_handler(engine, store)
 
     runner = Runner(
         queue=queue,

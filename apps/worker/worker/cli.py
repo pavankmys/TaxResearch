@@ -7,19 +7,23 @@ Run inside the worker container, for example::
     python -m worker.cli ingest-file /watch/cbic_gst_portal/notification/file.pdf \\
         --source cbic_gst_portal --doc-type notification
     python -m worker.cli job-status <ingestion-job-id>
+    python -m worker.cli sample-audit --percent 2 --days 7
 
 Each command prints the ingestion job id (or the status) on stdout. Errors go to stderr.
 """
 
 import argparse
+import random
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.engine import Engine
 
-from worker import db
+from worker import db, review
 from worker.ingest.loaders import LoadError, LoadRequest, submit
 from worker.settings import get_settings
 
@@ -53,7 +57,61 @@ def build_parser() -> argparse.ArgumentParser:
 
     status_cmd = commands.add_parser("job-status", help="show one ingestion job")
     status_cmd.add_argument("job_id", help="ingestion job id")
+
+    audit_cmd = commands.add_parser(
+        "sample-audit",
+        help="open spot-check metadata tasks for a sample of auto-published documents",
+    )
+    audit_cmd.add_argument("--percent", type=float, default=2.0, help="share to sample (0-100)")
+    audit_cmd.add_argument("--days", type=int, default=7, help="look back this many days")
     return parser
+
+
+def sample_audit(
+    engine: Engine,
+    percent: float,
+    days: int,
+    *,
+    rng: random.Random | None = None,
+    now: datetime | None = None,
+) -> list[UUID]:
+    """Open a spot-check metadata task for a random share of recently auto-published documents.
+
+    The share is ``percent`` of the documents auto-published in the last ``days`` days, and at
+    least one when there are any. Returns the ids of the sampled documents.
+
+    Raises:
+        ValueError: percent is outside (0, 100] or days is below 1.
+    """
+    if not 0 < percent <= 100:
+        raise ValueError("--percent must be above 0 and at most 100")
+    if days < 1:
+        raise ValueError("--days must be at least 1")
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=days)
+    picker = rng or random.Random()
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(db.documents.c.id, db.documents.c.metadata).where(
+                db.documents.c.review_state == "auto_published",
+                db.documents.c.updated_at >= cutoff,
+            )
+        ).all()
+        if not rows:
+            return []
+        size = min(len(rows), max(1, round(len(rows) * percent / 100)))
+        sampled: list[UUID] = []
+        for row in picker.sample(list(rows), size):
+            document_id = UUID(str(row[0]))
+            proposal: Any = row[1]
+            review.open_review_task(
+                conn,
+                "metadata",
+                "document",
+                document_id,
+                {"spot_check": True, "proposal": proposal},
+            )
+            sampled.append(document_id)
+    return sampled
 
 
 def _request(args: argparse.Namespace, *, url: str | None, file_path: str | None) -> LoadRequest:
@@ -113,6 +171,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "job-status":
             return _job_status(engine, args.job_id)
+        if args.command == "sample-audit":
+            try:
+                sampled = sample_audit(engine, args.percent, args.days)
+            except ValueError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+            print(f"spot-check tasks opened: {len(sampled)}")
+            return 0
         if args.command == "ingest-file":
             if not Path(args.path).is_file():
                 print(f"error: file not found: {args.path}", file=sys.stderr)

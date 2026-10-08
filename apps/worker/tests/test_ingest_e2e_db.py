@@ -470,7 +470,7 @@ def test_unreadable_pdf_opens_a_review_task_without_raising(
     assert len(tasks) == 1
     assert tasks[0]["resolution"]["reason"] == "unreadable_pdf"
     assert tasks[0]["status"] == "open"
-    assert tasks[0]["priority"] == 3
+    assert tasks[0]["priority"] == 2
 
 
 def test_reparse_does_not_duplicate_rows(

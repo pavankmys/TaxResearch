@@ -1,0 +1,113 @@
+# Court list for judgement metadata (M3, TSD 5.6). Keyed by court code.
+# DRAFT — needs expert review (A-26): codes, names and header patterns are written by us.
+#
+# Each pattern is matched case-insensitively against the header of a judgement. When several
+# courts match, the one whose pattern occurs first in the header wins.
+courts:
+  # DRAFT — needs expert review (A-26)
+  - code: SC
+    name: Supreme Court of India
+    level: SC
+    patterns:
+      - "IN THE SUPREME COURT OF INDIA"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-DL
+    name: High Court of Delhi
+    level: HC
+    patterns:
+      - "HIGH COURT OF DELHI"
+      - "DELHI HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-BM
+    name: High Court of Bombay
+    level: HC
+    patterns:
+      - "HIGH COURT OF JUDICATURE AT BOMBAY"
+      - "BOMBAY HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-MD
+    name: High Court of Madras
+    level: HC
+    patterns:
+      - "HIGH COURT OF JUDICATURE AT MADRAS"
+      - "MADRAS HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-CL
+    name: High Court of Calcutta
+    level: HC
+    patterns:
+      - "HIGH COURT AT CALCUTTA"
+      - "CALCUTTA HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-KA
+    name: High Court of Karnataka
+    level: HC
+    patterns:
+      - "HIGH COURT OF KARNATAKA"
+      - "KARNATAKA HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-GJ
+    name: High Court of Gujarat
+    level: HC
+    patterns:
+      - "HIGH COURT OF GUJARAT"
+      - "GUJARAT HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-AL
+    name: High Court of Allahabad
+    level: HC
+    patterns:
+      - "HIGH COURT OF JUDICATURE AT ALLAHABAD"
+      - "ALLAHABAD HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-PH
+    name: High Court of Punjab and Haryana
+    level: HC
+    patterns:
+      - "HIGH COURT OF PUNJAB AND HARYANA"
+      - "PUNJAB AND HARYANA HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-KL
+    name: High Court of Kerala
+    level: HC
+    patterns:
+      - "HIGH COURT OF KERALA"
+      - "KERALA HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: HC-TG
+    name: High Court for the State of Telangana
+    level: HC
+    patterns:
+      - "HIGH COURT FOR THE STATE OF TELANGANA"
+      - "TELANGANA HIGH COURT"
+
+  # DRAFT — needs expert review (A-26)
+  - code: GSTAT
+    name: Goods and Services Tax Appellate Tribunal
+    level: GSTAT
+    patterns:
+      - "GOODS AND SERVICES TAX APPELLATE TRIBUNAL"
+
+  # DRAFT — needs expert review (A-26). Listed before AAR so that AAAR wins on its own text.
+  - code: AAAR
+    name: Appellate Authority for Advance Ruling
+    level: AAAR
+    patterns:
+      - "APPELLATE AUTHORITY FOR ADVANCE RULING"
+
+  # DRAFT — needs expert review (A-26)
+  - code: AAR
+    name: Authority for Advance Ruling
+    level: AAR
+    patterns:
+      - "AUTHORITY FOR ADVANCE RULING"

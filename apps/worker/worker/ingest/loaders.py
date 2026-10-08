@@ -48,6 +48,8 @@ class LoadRequest:
     case_number: str | None = None
     court_code: str | None = None
     decision_date: str | None = None
+    object_key: str | None = None  # upload: the object store key of the bytes (API upload)
+    file_name: str | None = None  # upload: the name the user gave the file
 
 
 _PAYLOAD_FIELDS = tuple(f.name for f in fields(LoadRequest))
@@ -82,8 +84,8 @@ def validate_request(req: LoadRequest) -> SourceConfig:
     if req.doc_type not in load_doc_type_ranks():
         allowed = ", ".join(sorted(load_doc_type_ranks()))
         raise LoadError(f"unknown doc_type: {req.doc_type} (one of: {allowed})")
-    if bool(req.url) == bool(req.file_path):
-        raise LoadError("give exactly one of a URL or a file path")
+    if sum(bool(value) for value in (req.url, req.file_path, req.object_key)) != 1:
+        raise LoadError("give exactly one of a URL, a file path or an uploaded object")
     return source
 
 
@@ -118,6 +120,8 @@ def default_title(req: LoadRequest) -> str:
     """The title used when the request has none: the file name or the last URL segment."""
     if req.title:
         return req.title
+    if req.file_name:
+        return Path(req.file_name).name or "Untitled"
     if req.file_path:
         name = Path(req.file_path).name
         return _WATCH_PREFIX.sub("", name) or "Untitled"

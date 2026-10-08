@@ -21,13 +21,14 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 
-from worker import db
+from worker import db, review
 from worker.config import load_ingestion_config
 from worker.errors import PermanentError
 from worker.ingest import html as html_parser
 from worker.ingest.pdf import PdfParseError, parse_pdf
+from worker.ingest.queues import CLASSIFY_QUEUE
 from worker.ingest.simhash import simhash64
 from worker.ingest.types import Block, PageResult, ParseConfig, ParseResult
 from worker.objectstore import ObjectStore
@@ -228,7 +229,7 @@ def _record_unreadable(engine: Engine, job_id: UUID, version_id: UUID, exc: Exce
     now = _now()
     with engine.begin() as conn:
         if not db.has_open_review_task(conn, PARSE_FAILURE, "document_version", version_id):
-            db.open_review_task(
+            review.open_review_task(
                 conn,
                 PARSE_FAILURE,
                 "document_version",
@@ -244,6 +245,16 @@ def _record_unreadable(engine: Engine, job_id: UUID, version_id: UUID, exc: Exce
             finished_at=now,
         )
     logger.warning(f"Ingestion job {job_id}: version {version_id} is an unreadable PDF")
+
+
+def _enqueue_classify(conn: Connection, job_id: UUID, version_id: UUID) -> None:
+    """Queue the classify stage. Re-queueing the same version is a no-op (idempotency key)."""
+    db.enqueue(
+        conn,
+        CLASSIFY_QUEUE,
+        {"ingestion_job_id": str(job_id), "document_version_id": str(version_id)},
+        idempotency_key=f"{version_id}:classify",
+    )
 
 
 def _write_parse_output(
@@ -273,7 +284,7 @@ def _write_parse_output(
         if problems and not db.has_open_review_task(
             conn, PARSE_FAILURE, "document_version", version_id
         ):
-            db.open_review_task(
+            review.open_review_task(
                 conn,
                 PARSE_FAILURE,
                 "document_version",
@@ -288,6 +299,7 @@ def _write_parse_output(
             error_detail=None,
             finished_at=now,
         )
+        _enqueue_classify(conn, job_id, version_id)
     logger.info(
         f"Ingestion job {job_id}: version {version_id} parsed, {result.page_count} pages, "
         f"{len(result.blocks)} blocks, {len(problems)} problem pages"
@@ -305,6 +317,8 @@ def _parse(engine: Engine, store: ObjectStore, job_id: UUID, version_id: UUID) -
     current = current_parser_version(mime, cfg)
     if version["parsed_at"] is not None and version["parser_version"] == current:
         _mark_done(engine, job_id)
+        with engine.begin() as conn:
+            _enqueue_classify(conn, job_id, version_id)
         logger.info(f"Ingestion job {job_id}: version {version_id} already parsed, skipped")
         return
 

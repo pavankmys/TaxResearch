@@ -17,8 +17,47 @@ notification_series:
       - "ctr"
     description: Central Tax Rate Notifications
 
-  # TODO: Add remaining series (IT, IT(R), UT, UT(R), COMP, COMP(R))
-  # Full list to be confirmed at freeze (A-26)
+  # DRAFT — needs expert review (A-26)
+  - code: IT
+    aliases:
+      - "Integrated Tax"
+      - "it"
+    description: Integrated Tax Notifications
+
+  # DRAFT — needs expert review (A-26)
+  - code: IT(R)
+    aliases:
+      - "Integrated Tax (Rate)"
+      - "it(r)"
+    description: Integrated Tax Rate Notifications
+
+  # DRAFT — needs expert review (A-26)
+  - code: UT
+    aliases:
+      - "Union Territory Tax"
+      - "ut"
+    description: Union Territory Tax Notifications
+
+  # DRAFT — needs expert review (A-26)
+  - code: UT(R)
+    aliases:
+      - "Union Territory Tax (Rate)"
+      - "ut(r)"
+    description: Union Territory Tax Rate Notifications
+
+  # DRAFT — needs expert review (A-26)
+  - code: COMP
+    aliases:
+      - "Compensation Cess"
+      - "comp"
+    description: Compensation Cess Notifications
+
+  # DRAFT — needs expert review (A-26)
+  - code: COMP(R)
+    aliases:
+      - "Compensation Cess (Rate)"
+      - "comp(r)"
+    description: Compensation Cess Rate Notifications
 
 # Act abbreviations
 act_aliases:
@@ -56,5 +95,17 @@ rules_aliases:
 # TODO: Add patterns for All India Reporter, Supreme Court Reporter, etc.
 reporters: []
 
-# TODO: Add case number patterns for SC, HC (state-wise), GSTAT, AAR
-case_number_patterns: []
+# Case number patterns for judgement metadata (M3, TSD 5.6). Each entry has a short form
+# (abbr) and a regex with named groups number and year.
+# DRAFT — needs expert review (A-26)
+case_number_patterns:
+  - abbr: CA
+    pattern: "Civil\\s+Appeal\\s+No\\.?\\s*(?P<number>\\d+)\\s+of\\s+(?P<year>\\d{4})"
+  - abbr: SLP(C)
+    pattern: "SLP\\s*\\(C\\)\\s*No\\.?\\s*(?P<number>\\d+)\\s+of\\s+(?P<year>\\d{4})"
+  - abbr: WP(C)
+    pattern: "W\\.?\\s*P\\.?\\s*\\(C\\)\\s*No\\.?\\s*(?P<number>\\d+)\\s*(?:/|of)\\s*(?P<year>\\d{4})"
+  - abbr: WP
+    pattern: "Writ\\s+Petition\\s+No\\.?\\s*(?P<number>\\d+)\\s+of\\s+(?P<year>\\d{4})"
+  - abbr: TA
+    pattern: "Tax\\s+Appeal\\s+No\\.?\\s*(?P<number>\\d+)\\s+of\\s+(?P<year>\\d{4})"

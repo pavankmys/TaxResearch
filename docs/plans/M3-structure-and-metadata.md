@@ -173,3 +173,22 @@ Each part ends with its own review and push.
     - circular: `circular_kind`, `subject`, `din`
     - judgement: `court_level`, `court_name`, `court_code`, `bench`, `judges`, `decision_date`, `parties` (`{"petitioners": [], "respondents": []}`), `case_numbers`, `reporter_citations`
 - **One write path for metadata:** the worker job `ingest.apply_metadata`, payload `{document_id, fields, actor_user_id, reason, review_task_id|null}`. It is used by extraction, by review decisions (edit_approve) and by `PATCH /v1/platform/documents/{id}` (which returns 202). It writes `documents`, the typed table and `metadata`, then re-runs `publish`.
+
+## M3a review changes and decisions
+
+- **Worker writes no audit rows.** The audit chain stays API-only. The API audits review decisions and document edits before it enqueues `ingest.apply_metadata`.
+- **Upload payloads in acquire.** `acquire` accepts `object_key` and `file_name` (from `POST /v1/platform/ingestion/manual`) and records the source as `upload://<file_name>`.
+- **parse_failure priority is 2** (metadata 3, miss_report 4). Round-robin assignment is the same rule in the worker (`worker/review.py`) and the API (`app/review_assign.py`).
+- **Storage is wired like legal-core.** The Dockerfiles and the CI editable install pull it in; it isn't declared in each app's `pyproject.toml`. S3 `exists()` now handles the 404 from `head_object` correctly.
+- **Retrying an acquire job** reuses the original queue payload.
+- **`PATCH /documents` returns 202.** Field changes go through `apply_metadata`; status changes are written directly, with history rows.
+- **Classifier cues for Acts and Rules** match upper-case titles only.
+- **Judgement case numbers** are stored in short form (for example `CA 1234/2020`); the first one goes into the canonical ID.
+
+## M3a known gaps
+
+- Segmentation works per block. When the PDF layout merges a section heading and "(1)", or merges paragraphs, the sub-items in that block get no path of their own. Amending notifications are split per block, not per sentence.
+- Title, judge, bench and party extraction is heuristic. Parties depend on the `...Appellant(s)` line format.
+- Acts keep a provisional `unk:` canonical ID until M4 creates provisions.
+- Court lists, series aliases and case-number patterns are DRAFT until the experts review them (A-26).
+- The pipeline is tested on synthetic documents only. Real CBIC and Supreme Court samples need network access or files from the user.
