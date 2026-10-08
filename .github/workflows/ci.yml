@@ -62,7 +62,6 @@ jobs:
   web:
     runs-on: ubuntu-latest
     name: Web lint, type check, tests and build
-    if: hashFiles('apps/web/package.json') != ''
 
     steps:
       - uses: actions/checkout@v4
