@@ -25,6 +25,7 @@ check_untyped_defs = true
 
 # Paths to check
 mypy_path = "apps/api:apps/worker:packages/legal-core/src"
+files = ["apps/api/app", "apps/worker/worker", "packages/legal-core/src/legal_core"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

@@ -33,7 +33,7 @@ jobs:
         run: |
           # Install any packages that have pyproject.toml
           find . -maxdepth 3 -name "pyproject.toml" -path "*/apps/*" -o -name "pyproject.toml" -path "*/packages/*" | \
-            xargs -I {} sh -c 'pip install -e "$(dirname {})"' || true
+            xargs -I {} sh -c 'pip install -e "$(dirname {})"'
 
       - name: Lint with ruff
         run: |
@@ -111,7 +111,7 @@ jobs:
       - name: Install packages (editable mode)
         run: |
           find . -maxdepth 3 -name "pyproject.toml" -path "*/apps/*" -o -name "pyproject.toml" -path "*/packages/*" | \
-            xargs -I {} sh -c 'pip install -e "$(dirname {})"' || true
+            xargs -I {} sh -c 'pip install -e "$(dirname {})"'
 
       - name: Run integration tests
         env:

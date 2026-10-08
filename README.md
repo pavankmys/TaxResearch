@@ -15,8 +15,8 @@ A research platform for Indian GST law: keyword and citation search, amendment t
 | `config/` | YAML configuration (retrieval weights, sources, aliases) |
 | `eval/` | Query and fixture sets, evaluation harness |
 | `infra/` | Podman Compose (POC) and Terraform (production) |
-| `scripts/` | Utility scripts (backfill, replay, ops) |
-| `docs/` | Architecture decisions, runbooks, compliance |
+| `scripts/` | Startup, preflight, verification and code-check scripts |
+| `docs/` | Setup guides and runbooks |
 | `FSD.md`, `TSD.md` | Functional and technical specifications |
 
 ## Quick start: POC
@@ -88,13 +88,11 @@ See [TSD.md](./TSD.md) section 2 for the full system diagram and section 3 for t
 - Follow the workflow in [CLAUDE.md](./CLAUDE.md): plan → freeze → code.
 - All changes require a plan document reviewed by the team.
 - Code review and tests before merge.
-- ADRs (architecture decision records) in `docs/adr/` for major choices.
 
 ## References
 
 - [Functional Specification (FSD)](./FSD.md)
 - [Technical Specification (TSD)](./TSD.md)
-- Architecture decision records: `docs/adr/`
 - [CLAUDE.md](./CLAUDE.md): project workflow
 
 ## License and compliance

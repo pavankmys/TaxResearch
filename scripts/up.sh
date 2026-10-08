@@ -8,6 +8,9 @@ set -euo pipefail
 echo "Running preflight checks..."
 bash scripts/preflight.sh
 
+# Podman fails on a missing bind-mount source (Docker creates it); the folder is gitignored
+mkdir -p infra/watch
+
 # Determine which compose tool to use
 COMPOSE_CMD="podman compose"
 if ! command -v podman &> /dev/null; then
