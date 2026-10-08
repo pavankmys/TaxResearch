@@ -192,3 +192,24 @@ Each part ends with its own review and push.
 - Acts keep a provisional `unk:` canonical ID until M4 creates provisions.
 - Court lists, series aliases and case-number patterns are DRAFT until the experts review them (A-26).
 - The pipeline is tested on synthetic documents only. Real CBIC and Supreme Court samples need network access or files from the user.
+
+## M3b review changes and decisions
+
+- **Login cookie.** `tr_session` is `httpOnly`, `SameSite=Strict` and `Secure` unless `COOKIE_SECURE=false` (needed for local http end-to-end runs). The token never reaches the browser. Page images and raw files go through Next route handlers, which check the IDs before forwarding.
+- **Middleware security headers.** CSP, `X-Frame-Options: DENY`, `nosniff` and `Referrer-Policy`. `script-src` keeps `'unsafe-inline'` because Next's inline bootstrap scripts carry no nonce.
+- **Upload limit.** `serverActions.bodySizeLimit` is 52 MB so file uploads reach the API's 50 MB cap.
+- **e2e stack.** `scripts/e2e-stack.sh` gives the API and the worker the same local object store.
+- **Pinned versions.** Tests use vitest 3.2.4 (npm 10.9 crashes installing 4.x). `@playwright/test` and `playwright-core` are pinned to 1.56.1, matching the preinstalled Chromium.
+- **Job status.** A job is "terminal" when it has failed, been skipped at acquire, or is done at publish.
+- **Form behaviour.**
+  - Metadata and status forms call Server Actions inside `startTransition`, because `useActionState` left the button stuck on "Saving…".
+  - Tabs read `?tab=` when the page loads but don't write it on click.
+  - The metadata edit form only accepts new values; it can't clear a field.
+
+## M3b known gaps
+
+- **Keyboard.** The queue has no arrow-key navigation; the tab order works.
+- **Highlights.** Metadata tasks show page 1 with no block highlighted, because the API returns no blocks for them.
+- **User names.** "Reported by" and override authors show "You", "Another user" or a short user ID, because the APIs return only IDs.
+- **"Last 24 h" tiles** use UTC calendar days (today and yesterday).
+- **Not verified here.** The Docker image builds and the GitHub e2e job: this session has no container runtime, and CI hasn't run yet.

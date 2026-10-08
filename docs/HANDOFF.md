@@ -24,7 +24,7 @@ Last updated: 2026-10-08, end of the session that delivered M1 to M3. The next s
 | M1 Core data and auth | Done | `docs/plans/M1-core-data-and-auth.md` | `6d46afd` to `0a9628e` |
 | M2 Fetch, parse, store | Done | `docs/plans/M2-fetch-parse-store.md` | `70dc8bc`, `36a95c4`, `195fe19` |
 | M3a Backend: structure and metadata | Done | `docs/plans/M3-structure-and-metadata.md` | `529cc72`, `bdb86f2` |
-| M3b Reviewer console | Done (see the M3b notes in the plan) | same | `b24bd7d` onwards |
+| M3b Reviewer console | Done: 24 Playwright e2e, 97 Vitest (see the M3b notes in the plan) | same | `b24bd7d`, `84363df` and the final M3b commit |
 | **M4 Amendment engine and baseline law** | **Next: needs a plan and approval** | — | — |
 | M5 to M8, P-1 to P-4 | Not started | TSD 13.2 | — |
 
