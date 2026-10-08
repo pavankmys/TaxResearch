@@ -1,6 +1,6 @@
 # M3 plan: Structure and metadata
 
-Status: **draft, awaiting approval** · Milestone: TSD 13.2 M3 · Workstreams B, F
+Status: **approved by the user on 2026-10-08 (frozen)** · Milestone: TSD 13.2 M3 · Workstreams B, F
 
 ## Goal
 
@@ -153,8 +153,23 @@ Each part ends with its own review and push.
 - **Both:** ruff, format, mypy strict, and all unit and integration tests.
 - **Real documents:** if network access to the official sites is enabled, CBIC and Supreme Court samples are added to `eval/fixtures/` and run end to end. Until then everything rests on synthetic fixtures.
 
-## Open questions for approval
+## Decisions on open questions (user, 2026-10-08)
 
-1. Do you approve splitting M3 into M3a (backend) and M3b (console), built and pushed in that order?
-2. Draft config: may I write draft court lists, series aliases and case-number patterns, marked for expert review (A-26)? Or will your experts supply them?
-3. Playwright in CI on PRs only (about 3 to 4 extra minutes per PR run)? The alternative is local runs only.
+1. Split approved: M3a (backend), then M3b (console), each reviewed and pushed when done.
+2. Draft config (courts, series aliases, case-number patterns) is written by us and marked for expert review (A-26).
+3. Playwright runs in CI on pull requests only.
+
+## Interfaces fixed for parallel implementation (M3a)
+
+- **Migration 0007** (added columns):
+  - `document_versions`: `segmenter_version text`, `extractor_version text`, `segmented_at timestamptz`, `extracted_at timestamptz`
+  - `documents`: `metadata jsonb NOT NULL DEFAULT '{}'`, `meta_confidence real`
+  - The dashboard views.
+- **Metadata JSON** (stored in `documents.metadata` and in review task `resolution.proposal`):
+  - `{"fields": {...}, "confidence": {...}, "issues": [...], "extractor_version": "..."}`
+  - Field names:
+    - common: `doc_type`, `title`, `number`, `series`, `year`, `doc_date`, `in_force_date`, `issuing_authority`, `canonical_id`, `sections_referred`
+    - notification: `effective_date`, `gazette_ref`
+    - circular: `circular_kind`, `subject`, `din`
+    - judgement: `court_level`, `court_name`, `court_code`, `bench`, `judges`, `decision_date`, `parties` (`{"petitioners": [], "respondents": []}`), `case_numbers`, `reporter_citations`
+- **One write path for metadata:** the worker job `ingest.apply_metadata`, payload `{document_id, fields, actor_user_id, reason, review_task_id|null}`. It is used by extraction, by review decisions (edit_approve) and by `PATCH /v1/platform/documents/{id}` (which returns 202). It writes `documents`, the typed table and `metadata`, then re-runs `publish`.
