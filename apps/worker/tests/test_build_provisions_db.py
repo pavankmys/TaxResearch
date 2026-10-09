@@ -168,15 +168,15 @@ def test_build_provisions_creates_tree(engine: Engine) -> None:
             },
         )
 
-    assert result["provisions"] == 5  # ch1, s1, ch1.s1, ch1.s1.1, ch1.s1.1.a
-    assert result["created"] == 5
+    assert result["provisions"] == 4  # ch1, ch1.s1, ch1.s1.1, ch1.s1.1.a
+    assert result["created"] == 4
     assert result["unchanged"] == 0
 
     # Verify provisions exist in database
     with engine.connect() as conn:
         provisions = list(conn.execute(text("SELECT path FROM provisions ORDER BY path")).scalars())
     paths = {p for p in provisions if p.startswith("ch1")}
-    assert len(paths) == 5
+    assert paths == {"ch1", "ch1.s1", "ch1.s1.1", "ch1.s1.1.a"}
 
 
 def test_build_provisions_idempotent(engine: Engine) -> None:
