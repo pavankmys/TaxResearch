@@ -72,7 +72,8 @@ def _insert_document(engine: Engine, canonical_id: str) -> UUID:
         doc_id = UUID(
             str(
                 conn.execute(
-                    db.documents.insert().values(
+                    db.documents.insert()
+                    .values(
                         canonical_id=canonical_id,
                         doc_type="act",
                         authority_rank=1,
@@ -81,8 +82,8 @@ def _insert_document(engine: Engine, canonical_id: str) -> UUID:
                         review_state="pending_review",
                         created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.documents.c.id],
+                    )
+                    .returning(db.documents.c.id),
                 ).scalar_one()
             )
         )

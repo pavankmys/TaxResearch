@@ -197,14 +197,14 @@ def _provision(
 def _provision_version(
     conn: Any,
     provision_id: uuid.UUID,
-    text: str,
+    body: str,
     origin: str = "baseline",
     heading: str | None = None,
 ) -> uuid.UUID:
     """Create a test provision version and return its id."""
     import hashlib
 
-    text_sha = hashlib.sha256(text.encode()).hexdigest()
+    text_sha = hashlib.sha256(body.encode()).hexdigest()
     ver_id: uuid.UUID = conn.execute(
         text(
             "INSERT INTO provision_versions "
@@ -215,7 +215,7 @@ def _provision_version(
         {
             "provision_id": provision_id,
             "valid_from": date(2024, 7, 1),
-            "text": text,
+            "text": body,
             "text_sha256": text_sha,
             "origin": origin,
             "heading": heading,

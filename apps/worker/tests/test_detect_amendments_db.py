@@ -77,7 +77,8 @@ def _insert_document(engine: Engine, canonical_id: str, doc_type: str, doc_date:
         doc_id = UUID(
             str(
                 conn.execute(
-                    db.documents.insert().values(
+                    db.documents.insert()
+                    .values(
                         canonical_id=canonical_id,
                         doc_type=doc_type,
                         authority_rank=1,
@@ -87,8 +88,8 @@ def _insert_document(engine: Engine, canonical_id: str, doc_type: str, doc_date:
                         doc_date=doc_date,
                         created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.documents.c.id],
+                    )
+                    .returning(db.documents.c.id),
                 ).scalar_one()
             )
         )
@@ -110,7 +111,8 @@ def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
         block_id = UUID(
             str(
                 conn.execute(
-                    db.blocks.insert().values(
+                    db.blocks.insert()
+                    .values(
                         document_version_id=version_id,
                         seq=1,
                         kind="body",
@@ -119,8 +121,8 @@ def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
                         is_boilerplate=False,
                         created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.blocks.c.id],
+                    )
+                    .returning(db.blocks.c.id),
                 ).scalar_one()
             )
         )
@@ -135,15 +137,16 @@ def _insert_instrument(engine: Engine, code: str) -> UUID:
         instrument_id = UUID(
             str(
                 conn.execute(
-                    db.instruments.insert().values(
+                    db.instruments.insert()
+                    .values(
                         code=code,
                         kind="rules",
                         short_name=f"Test {code}",
                         baseline_status="none",
                         created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.instruments.c.id],
+                    )
+                    .returning(db.instruments.c.id),
                 ).scalar_one()
             )
         )
@@ -156,15 +159,16 @@ def _insert_provision(engine: Engine, instrument_id: UUID, path: str) -> UUID:
         provision_id = UUID(
             str(
                 conn.execute(
-                    db.provisions.insert().values(
+                    db.provisions.insert()
+                    .values(
                         instrument_id=instrument_id,
                         path=path,
                         level="rule",
                         ordinal=1,
                         created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.provisions.c.id],
+                    )
+                    .returning(db.provisions.c.id),
                 ).scalar_one()
             )
         )
