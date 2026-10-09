@@ -89,3 +89,18 @@ This Windows machine has no Postgres or Tesseract. Integration tests and OCR nee
 - **Forms and annexures** (`form<n>`, `annex<n>`, `sched<n>`) are not provisions; Schedule entries are not loaded.
 - **No Tesseract here**, so the OCR path was not exercised on these files (all three have a text layer).
 - **Rules baseline date.** The Rules PDF is current only to 2019. Its `--as-on` date must be given when it is loaded.
+
+### M4b review changes and decisions
+- **Citation parser pulled forward as a separate module.** `legal_core.locator.parse_locator` (Lark) reads amendment *targets*; the regex `parse_citation` stays for mention extraction. All 1,134 reference phrases found in the real CGST Act and Rules parse.
+- **Detector built on synthetic notifications.** `Sample Notification.pdf` is an empowerment notification and `09-2025-CTR-eng.pdf` is a rate schedule (M4d); neither changes provision text. The user agreed to build on synthetic fixtures in standard drafting idiom and to tighten it once real amending notifications arrive.
+- **Clause grammar** (Lark): substitute words, "for X read Y", insert words (after or before), insert provision, substitute provision, omit words, omit provision. Lead-ins ("In rule 59,-") carry a scope into relative items. A quoted text may run over several paragraphs. Every quoted text must be a verbatim substring of the source.
+- **Raw units.** A piece with an amendment cue word that the grammar cannot read becomes a `raw` proposal (`needs_info`, confidence 0) for manual entry.
+- **Stage.** `ingest.amend_detect` is enqueued from `apply_metadata` for notifications and orders. One `amendments` row and one `amendment` review task per proposal. Re-run is a no-op; `--force` replaces only unreviewed rows.
+- **Reviewed in review:** a migration that added a `subject_type` CHECK was removed (the column has none, and miss reports use `'search'`); the target path for provision-level operations was wrong (it tested op names against `kind`); resolution reasons are now stored on the amendment.
+
+### M4b known gaps
+- The grammar is unproven on real amending notifications. Expect new forms ("the entry … shall be substituted", table rows, "omit the words … occurring at the end"), which land as raw units today.
+- `dry_run_ok` and `dry_run_diff` are not set yet (M4c).
+- Amendments that target another notification (not an Act or Rules) are not resolved; they stay `needs_info`.
+- Rescission and supersession (`rescind`, `supersede`) are not extracted.
+- The integration tests for the stage were not run (no Postgres here).
