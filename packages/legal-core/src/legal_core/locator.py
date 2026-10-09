@@ -242,3 +242,24 @@ def parse_locator(text: str) -> Locator | None:
         return None
     steps = tuple(step for part in reversed(parts) for step in part)  # "(a) of 4 of rule 36"
     return Locator(steps=steps, instrument=instrument, raw=text.strip())
+
+
+_INSTRUMENT_NAME = re.compile(
+    r"\b(?P<name>(?:central|integrated)\s+goods\s+and\s+services\s+tax\s+(?:act|rules)"
+    r"|(?:cgst|igst)\s+(?:act|rules))\b",
+    re.IGNORECASE,
+)
+
+
+def find_instruments(text: str) -> list[tuple[int, str]]:
+    """Instrument codes named in the text, with their positions, in order of appearance.
+
+    ``Central Goods and Services Tax Rules, 2017`` gives ``CGST_RULES``. "The said Act" is not
+    found here: it only means something relative to a name found earlier.
+    """
+    found: list[tuple[int, str]] = []
+    for match in _INSTRUMENT_NAME.finditer(text):
+        code = _instrument(match.group("name"))
+        if code is not None:
+            found.append((match.start(), code))
+    return found
