@@ -1,6 +1,7 @@
 # Hand-off: where the build stands
 
-Last updated: 2026-10-08, end of the session that delivered M1 to M3. The next session starts at **M4**.
+Last updated: 2026-10-09. M4a, M4b and the pure core of M4c are built and merged. The GCP deployment is
+prepared and half way through its first real run (see "Where the first GCP deploy stands" below).
 
 ## Workflow rules (from CLAUDE.md and the user)
 
@@ -16,6 +17,42 @@ Last updated: 2026-10-08, end of the session that delivered M1 to M3. The next s
   - Playwright e2e runs on pull requests only.
   - Commit locally and **push once at the end of a session or milestone**, or when the user asks.
 
+## Where the first GCP deploy stands (2026-10-09)
+
+Guide: `docs/DEPLOY_GCP.md`. Plan and review notes: `docs/plans/DEPLOY-gcp.md`. All values below are in GitHub
+variables and Secret Manager, not in the repo.
+
+Done:
+1. Code is on `main` (PR 1 and PR 2 merged). CI is green: 99 integration tests and the Playwright run pass.
+   PR 2 fixed 17 broken integration tests (they had never run against Postgres) and one real bug: `force` in
+   `detect_amendments` stored a reviewed amendment twice.
+2. VM `tx-research-vm` (Debian 13): the access scope was changed to "Allow full access to all Cloud APIs".
+3. Cloud SQL instance `tx-research-db` has a private IP on the default VPC.
+4. `infra/gcp/bootstrap.sh` was run in Cloud Shell. It created the registry, the deploy account, the keyless GitHub
+   sign-in, the firewall rule and tag, and the two secrets. The `postgres` password secret was corrected afterwards
+   by adding a new version (the first one was typed wrongly; disable the old version if not done yet).
+5. Seven GitHub variables are set (`GCP_PROJECT`, `GCP_REGION`, `GCP_ZONE`, `GCP_VM`, `GCP_WIF_PROVIDER`,
+   `GCP_DEPLOY_SA`, `AR_REPO`).
+6. `infra/gcp/vm-setup.sh` ran on the VM. Podman works for the `taxresearch` user and the VM can pull from the
+   internet and see the image registry.
+
+Next, in this order:
+1. Pre-flight on the VM (free): Cloud SQL reachable on port 5432 from the VM, and the VM can read the values of
+   `taxresearch-env` and `taxresearch-db-admin` (use `gcloud secrets versions access`, byte count only; `describe`
+   is denied by design because the VM only has Secret Accessor). The last attempt left the placeholder IP in the
+   command, so check 1 never ran.
+2. Run the "Deploy to GCP" workflow once (it costs CI minutes: three image builds). Read `deploy.log` on a failure.
+3. Open the tunnel, sign in as the first admin, and check `/ready`.
+4. Optional: make the admin password differ from the `postgres` password (re-run the bootstrap, answer `y`).
+
+Known small defect, not fixed yet (batch it into the next push): `vm-setup.sh` step 6 reports "podman info failed"
+although Podman works, because it runs `runuser` from a folder the user cannot enter. Run the check from the user's
+home (`cd /` or `runuser -l`) and print the error text.
+
+Open points seen while doing this: the Playwright suite has one test that passes only on retry
+(`documents.spec.ts`, status change); the repo owner wants **at most one push per task** because CI minutes are
+limited.
+
 ## Milestones
 
 | Milestone | Status | Plan | Main commits |
@@ -25,7 +62,7 @@ Last updated: 2026-10-08, end of the session that delivered M1 to M3. The next s
 | M2 Fetch, parse, store | Done | `docs/plans/M2-fetch-parse-store.md` | `70dc8bc`, `36a95c4`, `195fe19` |
 | M3a Backend: structure and metadata | Done | `docs/plans/M3-structure-and-metadata.md` | `529cc72`, `bdb86f2` |
 | M3b Reviewer console | Done: 24 Playwright e2e, 97 Vitest (see the M3b notes in the plan) | same | `b24bd7d`, `84363df` and the final M3b commit |
-| **M4 Amendment engine and baseline law** | **Next: needs a plan and approval** | — | — |
+| **M4 Amendment engine and baseline law** | **In progress.** M4a baseline (done), M4b detector and stage (done), M4c applier and timeline (pure core done; consolidation stage, approve path, APIs, diff pane still to do), M4d rates (not started) | `docs/plans/M4-amendment-engine-and-baseline.md` | merged in PR 1 and PR 2 |
 | M5 to M8, P-1 to P-4 | Not started | TSD 13.2 | — |
 
 Each plan file ends with "Review changes" and "Known gaps" sections. Read them before building on that milestone.
@@ -96,14 +133,14 @@ scripts/e2e-stack.sh && (cd apps/web && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browser
 
 ## Waiting on the user
 
-1. **GCP VM deployment.** The images, the stack and the deployment scripts have never run under Podman or on Google Cloud. Follow `docs/DEPLOY_GCP.md` (one-time bootstrap, then the "Deploy to GCP" workflow). It was written and linted, not run.
+1. **GCP VM deployment.** Half way: setup is done, the first workflow run is not. See "Where the first GCP deploy stands".
 2. **Real sample documents.** The session network policy blocked `cbic-gst.gov.in`, `taxinformation.cbic.gov.in`, `www.sci.gov.in` and `egazette.gov.in`. Either allow them in the environment settings, or put 3 to 5 PDFs in `eval/fixtures/`. Everything so far has been tested on synthetic PDFs only.
 3. **Experts.**
    - The query set is needed before M5.
    - The fixture set is needed before M7.
    - Review the DRAFT `config/courts.yaml`, the series aliases and the case-number patterns (A-26).
    - Verified baseline Act and Rules text is needed for M4 (A-17).
-4. **CI has never run on GitHub.** It will run on the first pull request or merge to `main`.
+4. **CI** runs on GitHub and is green on `main` as of 2026-10-09.
 
 ## Starting points for M4 (TSD 13.2, 4.4, 4.10, 5.7, 5.9)
 
