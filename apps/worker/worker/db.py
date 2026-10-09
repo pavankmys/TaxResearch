@@ -241,6 +241,57 @@ judgements = sa.Table(
     sa.Column("updated_at", _ts, nullable=False),
 )
 
+instruments = sa.Table(
+    "instruments",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("code", sa.Text, nullable=False, unique=True),
+    sa.Column("kind", sa.Text, nullable=False),
+    sa.Column("short_name", sa.Text, nullable=False),
+    sa.Column("state_code", sa.Text, nullable=True),
+    sa.Column("baseline_status", sa.Text, nullable=False),
+    sa.Column("baseline_document_id", _uuid, nullable=True),
+    sa.Column("baseline_as_on", sa.Date, nullable=True),
+    sa.Column("baseline_verified_by", _uuid, nullable=True),
+    sa.Column("baseline_verified_at", _ts, nullable=True),
+    sa.Column("created_at", _ts, nullable=False),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
+provisions = sa.Table(
+    "provisions",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("instrument_id", _uuid, nullable=False),
+    sa.Column("path", sa.Text, nullable=False),
+    sa.Column("parent_id", _uuid, nullable=True),
+    sa.Column("level", sa.Text, nullable=False),
+    sa.Column("number_label", sa.Text, nullable=True),
+    sa.Column("ordinal", sa.Integer, nullable=False),
+    sa.Column("first_valid_from", sa.Date, nullable=True),
+    sa.Column("updated_by", _uuid, nullable=True),
+    sa.Column("created_at", _ts, nullable=False),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
+provision_versions = sa.Table(
+    "provision_versions",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("provision_id", _uuid, nullable=False),
+    sa.Column("valid_from", sa.Date, nullable=False),
+    sa.Column("valid_to", sa.Date, nullable=True),
+    sa.Column("heading", sa.Text, nullable=True),
+    sa.Column("text", sa.Text, nullable=False),
+    sa.Column("text_sha256", sa.Text, nullable=False),
+    sa.Column("rec_from", _ts, nullable=False),
+    sa.Column("rec_to", _ts, nullable=True),
+    sa.Column("origin", sa.Text, nullable=False),
+    sa.Column("block_ids", postgresql.ARRAY(_uuid), nullable=False),
+    sa.Column("created_at", _ts, nullable=False),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
 job_queue = sa.Table(
     "job_queue",
     metadata,

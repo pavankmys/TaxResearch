@@ -131,3 +131,17 @@ def cid_garbled() -> bytes:
         pdf.set_x(10)
         pdf.multi_cell(0, 6, garbage)
     return bytes(pdf.output())
+
+
+def with_diagonal_watermark(paragraphs: list[str], watermark: str = "SampleMark") -> bytes:
+    """A text-layer PDF with a 45 degree watermark drawn across the body text."""
+    pdf = _new_pdf()
+    pdf.add_page()
+    pdf.set_xy(10, _BODY_TOP_MM)
+    for paragraph in paragraphs:
+        pdf.multi_cell(0, 6, paragraph)
+        pdf.ln(3)
+    pdf.set_font("Helvetica", size=30)
+    with pdf.rotation(45, x=105, y=150):
+        pdf.text(70, 150, watermark)
+    return bytes(pdf.output())

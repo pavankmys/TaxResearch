@@ -250,8 +250,26 @@ def _non_space(text: str) -> int:
 # --- Text pages -------------------------------------------------------------------------
 
 
+_MAX_SKEW = 0.1  # |sin| of the text angle; a diagonal watermark is far above this
+
+
+def _is_axis_aligned(obj: dict[str, Any]) -> bool:
+    """False for characters drawn at an angle (a diagonal watermark); True for everything else."""
+    if obj.get("object_type") != "char":
+        return True
+    matrix = obj.get("matrix")
+    if not matrix:
+        return True
+    return abs(float(matrix[1])) < _MAX_SKEW and abs(float(matrix[2])) < _MAX_SKEW
+
+
 def _text_drafts(page: Any, page_no: int) -> list[_Draft]:
-    """Blocks for a page with a usable text layer, in reading order."""
+    """Blocks for a page with a usable text layer, in reading order.
+
+    Characters drawn at an angle (the diagonal portal watermark on India Code PDFs) are dropped,
+    because they split into single-letter blocks and break words in the body text.
+    """
+    page = page.filter(_is_axis_aligned)
     width = float(page.width)
     height = float(page.height)
     words: list[Word] = page.extract_words(
@@ -409,6 +427,16 @@ def _is_heading(line: _Line) -> bool:
     )
 
 
+# A numbered line that starts_numbered misses: an amendment bracket with its footnote digit
+# ("1[20. Manner"), a bracketed sub-item ("[(2) Subject"), a spaced dot ("80 . Payment") or no
+# space after the dot ("31.Residual"). Acts and Rules published "as amended" use all of these.
+_AMENDED_NUMBERING = re.compile(
+    r"^(?:\d{1,3}\s*)?\[\s*(?:\d{1,3}[A-Z]{0,2}\s?\.|\(\s*\w{1,4}\s*\))"
+    r"|^\d{1,3}[A-Z]{0,2}\s\.\s"
+    r"|^\d{1,3}[A-Z]{0,2}\.[A-Z][a-z]"
+)
+
+
 def _paragraph_groups(lines: list[_Line]) -> list[list[_Line]]:
     if not lines:
         return []
@@ -418,6 +446,7 @@ def _paragraph_groups(lines: list[_Line]) -> list[list[_Line]]:
         breaks = (
             cur.top - prev.bottom > 1.5 * median_height
             or starts_numbered(cur.text)
+            or _AMENDED_NUMBERING.match(cur.text) is not None
             or _is_heading(prev)
             or _is_heading(cur)
             or bool(prev.zone_key) != bool(cur.zone_key)

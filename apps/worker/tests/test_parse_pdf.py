@@ -4,7 +4,14 @@ import pytest
 from worker.ingest.ocr import tesseract_available
 from worker.ingest.pdf import parse_pdf
 from worker.ingest.types import ParseConfig
-from worker.testing.pdf_fixtures import born_digital, cid_garbled, scanned, two_column, with_table
+from worker.testing.pdf_fixtures import (
+    born_digital,
+    cid_garbled,
+    scanned,
+    two_column,
+    with_diagonal_watermark,
+    with_table,
+)
 
 _LONG = " ".join(["The rate of tax on the supply of goods shall be as notified"] * 6) + "."
 
@@ -130,3 +137,12 @@ def test_scanned_page_is_ocred() -> None:
     assert result.ocr_used is True
     assert result.ocr_conf is not None and result.ocr_conf >= 60
     assert any(b.kind == "para" and b.page == 1 and b.bbox is None for b in result.blocks)
+
+
+def test_diagonal_watermark_is_dropped_from_blocks() -> None:
+    result = parse_pdf(with_diagonal_watermark(_paragraphs(2)), ParseConfig())
+    text = " ".join(b.text for b in result.blocks)
+    assert "SampleMark" not in text
+    assert not any(len(b.text.strip()) == 1 for b in result.blocks)
+    body = [b for b in result.blocks if b.kind == "para" and not b.is_boilerplate]
+    assert [b.para_label for b in body] == ["1", "2"]

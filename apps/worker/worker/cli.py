@@ -13,6 +13,7 @@ Each command prints the ingestion job id (or the status) on stdout. Errors go to
 """
 
 import argparse
+import json
 import random
 import sys
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.engine import Engine
 
 from worker import db, review
+from worker.errors import PermanentError
+from worker.ingest.build_provisions import build_provisions_for
 from worker.ingest.loaders import LoadError, LoadRequest, submit
 from worker.settings import get_settings
 
@@ -64,6 +67,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit_cmd.add_argument("--percent", type=float, default=2.0, help="share to sample (0-100)")
     audit_cmd.add_argument("--days", type=int, default=7, help="look back this many days")
+
+    build_prov_cmd = commands.add_parser(
+        "build-provisions",
+        help="build provisions from a document's blocks",
+    )
+    build_prov_cmd.add_argument("--document-id", required=True, help="document UUID")
+    build_prov_cmd.add_argument(
+        "--instrument", required=True, help="instrument code (e.g., CGST_ACT)"
+    )
+    build_prov_cmd.add_argument("--as-on", required=True, help="as-on date (YYYY-MM-DD)")
     return parser
 
 
@@ -179,6 +192,27 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             print(f"spot-check tasks opened: {len(sampled)}")
             return 0
+        if args.command == "build-provisions":
+            try:
+                doc_id = UUID(args.document_id)
+            except ValueError:
+                print(f"error: not a UUID: {args.document_id}", file=sys.stderr)
+                return 2
+            try:
+                with engine.begin() as conn:
+                    result = build_provisions_for(
+                        conn,
+                        {
+                            "document_id": str(doc_id),
+                            "instrument_code": args.instrument,
+                            "as_on_date": args.as_on,
+                        },
+                    )
+                print(json.dumps(result))
+                return 0
+            except PermanentError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
         if args.command == "ingest-file":
             if not Path(args.path).is_file():
                 print(f"error: file not found: {args.path}", file=sys.stderr)

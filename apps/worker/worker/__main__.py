@@ -14,11 +14,13 @@ from sqlalchemy.engine import Engine
 from worker.config import load_ingestion_config
 from worker.ingest.acquire import make_acquire_handler
 from worker.ingest.apply_metadata import make_apply_metadata_handler
+from worker.ingest.build_provisions import make_build_provisions_handler
 from worker.ingest.classify import make_classify_handler
 from worker.ingest.extract_meta import make_extract_meta_handler
 from worker.ingest.publish import make_publish_handler
 from worker.ingest.queues import (
     APPLY_METADATA_QUEUE,
+    BUILD_PROVISIONS_QUEUE,
     CLASSIFY_QUEUE,
     EXTRACT_META_QUEUE,
     PUBLISH_QUEUE,
@@ -93,6 +95,7 @@ def main() -> None:
     handlers[EXTRACT_META_QUEUE] = make_extract_meta_handler(engine, store)
     handlers[APPLY_METADATA_QUEUE] = make_apply_metadata_handler(engine, store)
     handlers[PUBLISH_QUEUE] = make_publish_handler(engine, store)
+    handlers[BUILD_PROVISIONS_QUEUE] = make_build_provisions_handler(engine, store)
 
     runner = Runner(
         queue=queue,
