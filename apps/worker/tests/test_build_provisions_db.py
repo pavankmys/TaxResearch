@@ -51,6 +51,15 @@ def engine(migrated_db_url: str) -> Iterator[Engine]:
 def _purge(engine: Engine, started: datetime) -> None:
     """Clean up what a test created: provisions, versions, documents, versions, blocks."""
     with engine.begin() as conn:
+        # The seeded instruments must stop pointing at a test document before it is deleted
+        conn.execute(
+            text(
+                "UPDATE instruments SET baseline_document_id = NULL, baseline_status = 'none', "
+                "baseline_as_on = NULL WHERE baseline_document_id IN "
+                "(SELECT id FROM documents WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
         # Delete in reverse dependency order
         conn.execute(text("DELETE FROM provision_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM provisions WHERE created_at >= :t"), {"t": started})
@@ -305,11 +314,22 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
     # Manually insert an amendment version
     with engine.connect() as conn:
         prov_id = conn.execute(
-            text("SELECT id FROM provisions WHERE path = 'ch1.s1' LIMIT 1")
+            text(
+                "SELECT p.id FROM provisions p JOIN instruments i ON i.id = p.instrument_id "
+                "WHERE i.code = 'CGST_ACT' AND p.path = CAST('ch1.s1' AS ltree)"
+            )
         ).scalar()
 
+    assert prov_id is not None
     if prov_id:
         with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE provision_versions SET valid_to = :d "
+                    "WHERE provision_id = :p AND valid_to IS NULL"
+                ),
+                {"d": date(2026, 7, 1), "p": str(prov_id)},
+            )
             conn.execute(
                 db.provision_versions.insert().values(
                     provision_id=UUID(str(prov_id)),
@@ -381,7 +401,7 @@ def test_build_provisions_canonical_rekey(engine: Engine) -> None:
             text("SELECT canonical_id FROM documents WHERE id = :id"), {"id": str(doc_id)}
         ).scalar()
 
-    assert new_canonical == "CGST_ACT"
+    assert new_canonical == "inst:CGST_ACT"
 
 
 def test_build_provisions_instruments_updated(engine: Engine) -> None:

@@ -9,6 +9,7 @@ import os
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -105,8 +106,25 @@ def _insert_document(engine: Engine, canonical_id: str, doc_type: str, doc_date:
     return doc_id
 
 
-def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
-    """Insert a version for a document with a block, set it as current."""
+_PREAMBLE = [
+    "In exercise of the powers conferred by section 164 of the Central Goods and Services Tax "
+    "Act, 2017 (12 of 2017), the Central Government hereby makes the following rules further to "
+    "amend the Central Goods and Services Tax Rules, 2017, namely:-",
+    "1. (1) These rules may be called the Sample (Amendment) Rules, 2026.",
+    "(2) They shall come into force on the date of their publication in the Official Gazette.",
+    "2. In the said rules,-",
+]
+
+
+def _substitute(rule: str) -> str:
+    return (
+        f"(i) in rule {rule}, in sub-rule (4), for the words “twenty per cent.”, "
+        "the words “ten per cent.” shall be substituted;"
+    )
+
+
+def _insert_version(engine: Engine, document_id: UUID, texts: list[str]) -> UUID:
+    """Insert a version for a document with one block per text, set it as current."""
     with engine.begin() as conn:
         version_id, _ = db.insert_version(
             conn,
@@ -115,213 +133,152 @@ def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
             raw_sha256="abc123",
             mime="application/pdf",
         )
-
-        # Insert a block with the given text
-        block_id = UUID(
-            str(
-                conn.execute(
-                    db.blocks.insert()
-                    .values(
-                        document_version_id=version_id,
-                        seq=1,
-                        kind="para",
-                        text=block_text,
-                        text_sha256="text123",
-                        is_boilerplate=False,
-                    )
-                    .returning(db.blocks.c.id),
-                ).scalar_one()
+        for seq, block_text in enumerate(texts, start=1):
+            conn.execute(
+                db.blocks.insert().values(
+                    document_version_id=version_id,
+                    seq=seq,
+                    kind="para",
+                    text=block_text,
+                    text_sha256=f"sha{seq}",
+                    is_boilerplate=False,
+                )
             )
-        )
-
         db.set_current_version(conn, document_id, version_id)
     return version_id
 
 
-def _insert_instrument(engine: Engine, code: str) -> UUID:
-    """Insert a test instrument."""
+def _insert_target(engine: Engine, path: str) -> UUID:
+    """Insert a provision under the seeded CGST_RULES instrument (path is an ltree)."""
     with engine.begin() as conn:
-        instrument_id = UUID(
+        return UUID(
             str(
                 conn.execute(
-                    db.instruments.insert()
-                    .values(
-                        code=code,
-                        kind="rules",
-                        short_name=f"Test {code}",
-                        baseline_status="none",
-                        created_at=datetime.now(UTC),
-                        updated_at=datetime.now(UTC),
-                    )
-                    .returning(db.instruments.c.id),
+                    text(
+                        "INSERT INTO provisions (instrument_id, path, level, ordinal, "
+                        "created_at, updated_at) "
+                        "SELECT id, CAST(:path AS ltree), 'subsection', 4, now(), now() "
+                        "FROM instruments WHERE code = 'CGST_RULES' RETURNING id"
+                    ),
+                    {"path": path},
                 ).scalar_one()
             )
         )
-    return instrument_id
 
 
-def _insert_provision(engine: Engine, instrument_id: UUID, path: str) -> UUID:
-    """Insert a test provision."""
-    with engine.begin() as conn:
-        provision_id = UUID(
-            str(
-                conn.execute(
-                    db.provisions.insert()
-                    .values(
-                        instrument_id=instrument_id,
-                        path=path,
-                        level="rule",
-                        ordinal=1,
-                        created_at=datetime.now(UTC),
-                        updated_at=datetime.now(UTC),
-                    )
-                    .returning(db.provisions.c.id),
-                ).scalar_one()
+def _amendments(engine: Engine, doc_id: UUID) -> list[Any]:
+    with engine.connect() as conn:
+        return list(
+            conn.execute(
+                text(
+                    "SELECT id, op, review_status, target_provision_id, old_text, new_text, "
+                    "target_locator FROM amendments WHERE source_document_id = :id "
+                    "ORDER BY created_at"
+                ),
+                {"id": str(doc_id)},
             )
+            .mappings()
+            .all()
         )
-    return provision_id
 
 
 class TestDetectAmendmentsBasic:
-    """Basic amendment detection tests."""
+    """Detection against a real database: rows, review tasks, idempotency and force."""
 
-    def test_detect_amendments_creates_row(self, engine: Engine) -> None:
-        """Test that amendment rows are created."""
-        # Create document and version with sample text
-        doc_id = _insert_document(engine, "TEST_NOTIF_1", "notification", date(2026, 1, 10))
-        block_text = (
-            "In the said rules, in rule 36, for the words 'old text', substitute 'new text'."
-        )
-        version_id = _insert_version(engine, doc_id, block_text)
+    def _doc(self, engine: Engine, canonical_id: str, rule: str = "36") -> UUID:
+        doc_id = _insert_document(engine, canonical_id, "notification", date(2026, 1, 10))
+        _insert_version(engine, doc_id, [*_PREAMBLE, _substitute(rule)])
+        return doc_id
 
-        # Create a test instrument and provision
-        instr_id = _insert_instrument(engine, "TEST_RULES")
-        prov_id = _insert_provision(engine, instr_id, "r36")
+    def test_stores_amendment_and_opens_a_review_task(self, engine: Engine) -> None:
+        prov_id = _insert_target(engine, "r36.4")
+        doc_id = self._doc(engine, "TEST_NOTIF_1")
 
-        # Run detection
         with engine.begin() as conn:
             result = detect_amendments_for(conn, {"document_id": str(doc_id)})
 
-        # Verify result counts
-        assert result["proposals"] >= 0
-        assert "parsed" in result
-        assert "raw" in result
-        assert "needs_info" in result
-        assert "resolved_targets" in result
-        assert "tasks" in result
-        assert "skipped" not in result or result["skipped"] == 0
-
-        # Verify amendment rows were created
+        assert result["proposals"] == 1
+        assert result["parsed"] == 1
+        assert result["resolved_targets"] == 1
+        assert result["needs_info"] == 0
+        assert result["tasks"] == 1
+        rows = _amendments(engine, doc_id)
+        assert len(rows) == 1
+        row = rows[0]
+        assert (row["op"], row["review_status"]) == ("substitute", "proposed")
+        assert row["target_provision_id"] == prov_id
+        assert (row["old_text"], row["new_text"]) == ("twenty per cent.", "ten per cent.")
         with engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    "SELECT id, source_document_id, op, review_status "
-                    "FROM amendments WHERE source_document_id = :id"
-                ),
-                {"id": str(doc_id)},
-            ).fetchall()
-            # We may or may not have amendments depending on detector parse
-            # Just verify the structure
-
-    def test_detect_amendments_idempotent(self, engine: Engine) -> None:
-        """Running detection twice without force should be a no-op (skipped)."""
-        doc_id = _insert_document(engine, "TEST_NOTIF_2", "notification", date(2026, 1, 10))
-        block_text = "In rule 36, for 'a', substitute 'b'."
-        _insert_version(engine, doc_id, block_text)
-
-        # First run
-        with engine.begin() as conn:
-            result1 = detect_amendments_for(conn, {"document_id": str(doc_id)})
-        first_count = sum(
-            1
-            for c in ["parsed", "raw", "needs_info", "resolved_targets"]
-            if c in result1 and result1[c] > 0
-        )
-
-        # Second run without force
-        with engine.begin() as conn:
-            result2 = detect_amendments_for(conn, {"document_id": str(doc_id)})
-
-        # Should be skipped
-        assert result2.get("skipped") == 1
-
-    def test_detect_amendments_force_recreates_unreviewed(self, engine: Engine) -> None:
-        """With force=true, only unreviewed amendments should be re-created."""
-        doc_id = _insert_document(engine, "TEST_NOTIF_3", "notification", date(2026, 1, 10))
-        block_text = "In rule 36, for 'a', substitute 'b'."
-        version_id = _insert_version(engine, doc_id, block_text)
-
-        # First run: create amendments
-        with engine.begin() as conn:
-            result1 = detect_amendments_for(conn, {"document_id": str(doc_id)})
-
-        # Mark one amendment as reviewed (if any were created)
-        with engine.begin() as conn:
-            rows = conn.execute(
-                text("SELECT id FROM amendments WHERE source_document_id = :id LIMIT 1"),
-                {"id": str(doc_id)},
-            ).fetchall()
-            if rows:
-                amendment_id = rows[0][0]
+            task = (
                 conn.execute(
                     text(
-                        "UPDATE amendments "
-                        "SET review_status = 'approved', reviewed_at = NOW() "
-                        "WHERE id = :id"
+                        "SELECT kind, status FROM review_tasks "
+                        "WHERE subject_type = 'amendment' AND subject_id = :id"
                     ),
-                    {"id": str(amendment_id)},
+                    {"id": str(row["id"])},
                 )
+                .mappings()
+                .one()
+            )
+        assert (task["kind"], task["status"]) == ("amendment", "open")
 
-        # Run with force
+    def test_second_run_is_skipped(self, engine: Engine) -> None:
+        _insert_target(engine, "r36.4")
+        doc_id = self._doc(engine, "TEST_NOTIF_2")
         with engine.begin() as conn:
-            result2 = detect_amendments_for(conn, {"document_id": str(doc_id), "force": True})
+            detect_amendments_for(conn, {"document_id": str(doc_id)})
+        with engine.begin() as conn:
+            again = detect_amendments_for(conn, {"document_id": str(doc_id)})
 
-        # Verified amendments should still be there
-        with engine.connect() as conn:
-            approved_count = conn.execute(
+        assert again["skipped"] == 1
+        assert len(_amendments(engine, doc_id)) == 1
+
+    def test_force_keeps_a_reviewed_amendment_and_does_not_duplicate_it(
+        self, engine: Engine
+    ) -> None:
+        _insert_target(engine, "r36.4")
+        doc_id = self._doc(engine, "TEST_NOTIF_3")
+        with engine.begin() as conn:
+            detect_amendments_for(conn, {"document_id": str(doc_id)})
+        with engine.begin() as conn:
+            conn.execute(
                 text(
-                    "SELECT COUNT(*) FROM amendments "
-                    "WHERE source_document_id = :id AND review_status = 'approved'"
+                    "UPDATE amendments SET review_status = 'approved', reviewed_at = now() "
+                    "WHERE source_document_id = :id"
                 ),
                 {"id": str(doc_id)},
-            ).scalar()
-            assert approved_count >= 0  # At least the one we marked
+            )
+        with engine.begin() as conn:
+            detect_amendments_for(conn, {"document_id": str(doc_id), "force": True})
 
-    def test_detect_amendments_creates_review_tasks(self, engine: Engine) -> None:
-        """Test that review tasks are created for amendments."""
-        doc_id = _insert_document(engine, "TEST_NOTIF_4", "notification", date(2026, 1, 10))
-        block_text = "In rule 36, for 'old', substitute 'new'."
-        _insert_version(engine, doc_id, block_text)
+        rows = _amendments(engine, doc_id)
+        assert [r["review_status"] for r in rows] == ["approved"]
 
+    def test_force_recreates_an_unreviewed_amendment(self, engine: Engine) -> None:
+        _insert_target(engine, "r36.4")
+        doc_id = self._doc(engine, "TEST_NOTIF_4")
+        with engine.begin() as conn:
+            detect_amendments_for(conn, {"document_id": str(doc_id)})
+        first = _amendments(engine, doc_id)[0]["id"]
+        with engine.begin() as conn:
+            result = detect_amendments_for(conn, {"document_id": str(doc_id), "force": True})
+
+        rows = _amendments(engine, doc_id)
+        assert len(rows) == 1
+        assert rows[0]["id"] != first
+        assert result["tasks"] == 1
+
+    def test_unresolved_target_needs_info(self, engine: Engine) -> None:
+        doc_id = self._doc(engine, "TEST_NOTIF_5", rule="999")
         with engine.begin() as conn:
             result = detect_amendments_for(conn, {"document_id": str(doc_id)})
 
-        # If amendments were created, tasks should also be created
-        if result.get("tasks", 0) > 0:
-            with engine.connect() as conn:
-                task_rows = conn.execute(
-                    text(
-                        "SELECT id, kind, subject_type FROM review_tasks "
-                        "WHERE subject_type = 'amendment' AND status = 'open'"
-                    )
-                ).fetchall()
-                assert len(task_rows) > 0
-                for task_row in task_rows:
-                    assert task_row[1] == "amendment"
-                    assert task_row[2] == "amendment"
-
-    def test_detect_amendments_unresolved_target(self, engine: Engine) -> None:
-        """Test amendment with unresolved target gets needs_info status."""
-        doc_id = _insert_document(engine, "TEST_NOTIF_5", "notification", date(2026, 1, 10))
-        # Use a provision path that doesn't exist in the database
-        block_text = "In CGST_RULES, in rule 999, for 'a', substitute 'b'."
-        _insert_version(engine, doc_id, block_text)
-
-        with engine.begin() as conn:
-            result = detect_amendments_for(conn, {"document_id": str(doc_id)})
-
-        # Result should indicate some processing happened
-        assert "proposals" in result
+        assert result["resolved_targets"] == 0
+        assert result["needs_info"] == 1
+        row = _amendments(engine, doc_id)[0]
+        assert row["review_status"] == "needs_info"
+        assert row["target_provision_id"] is None
+        assert "target_not_found" in row["target_locator"]["problems"]
 
 
 class TestDetectAmendmentsErrorHandling:
