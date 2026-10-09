@@ -8,7 +8,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,6 +129,17 @@ def create_app() -> FastAPI:
         logger.info(json.dumps(log_data))
 
         return response  # type: ignore[no-any-return]
+
+    # Ready endpoint: returns 503 if database is unavailable
+    @app.get("/ready")
+    async def ready(session: AsyncSession = Depends(get_session)) -> dict[str, str]:  # noqa: B008
+        """Readiness check endpoint. Returns 503 if database is unreachable."""
+        try:
+            # Try a simple SELECT 1 query
+            await session.execute(text("SELECT 1"))
+            return {"status": "ready"}
+        except Exception:
+            raise HTTPException(status_code=503, detail={"status": "unavailable"}) from None
 
     # Health endpoint
     @app.get("/health")

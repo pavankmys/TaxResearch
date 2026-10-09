@@ -2,6 +2,7 @@
 
 import importlib
 import logging
+import os
 import signal
 import threading
 from collections.abc import Callable
@@ -12,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from worker.config import load_ingestion_config
+from worker.heartbeat import start_heartbeat
 from worker.ingest.acquire import make_acquire_handler
 from worker.ingest.apply_metadata import make_apply_metadata_handler
 from worker.ingest.build_provisions import make_build_provisions_handler
@@ -107,6 +109,12 @@ def main() -> None:
         poll_interval_seconds=settings.poll_interval_seconds,
         retry_base_seconds=settings.retry_base_seconds,
     )
+
+    # Start heartbeat thread for health checks
+    heartbeat_file = os.getenv("HEARTBEAT_FILE", "/tmp/worker.heartbeat")
+    heartbeat_thread = start_heartbeat(heartbeat_file, interval=10.0)
+    heartbeat_thread.start()
+    logging.info(f"Heartbeat started, writing to {heartbeat_file}")
 
     # Setup signal handling for graceful shutdown
     stop_event = threading.Event()

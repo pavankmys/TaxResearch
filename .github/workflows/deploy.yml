@@ -1,0 +1,163 @@
+name: Deploy to GCP
+
+# Manual only: builds the three images, pushes them to Artifact Registry and deploys them to
+# the Compute Engine VM through an IAP tunnel. Keyless login (Workload Identity Federation).
+# One-time setup: docs/DEPLOY_GCP.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag (default: the first 12 characters of the commit SHA)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPO: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Work out the image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          tag="${INPUT_TAG:-${COMMIT_SHA:0:12}}"
+          if ! [[ "$tag" =~ ^[A-Za-z0-9._-]{1,128}$ ]]; then
+            echo "::error::The tag must match ^[A-Za-z0-9._-]{1,128}$"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Tag: $tag"
+
+      - name: Check the repository variables are set
+        env:
+          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_ZONE: ${{ vars.GCP_ZONE }}
+          GCP_VM: ${{ vars.GCP_VM }}
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_DEPLOY_SA: ${{ vars.GCP_DEPLOY_SA }}
+          AR_REPO: ${{ vars.AR_REPO }}
+        run: |
+          missing=0
+          for name in GCP_PROJECT GCP_REGION GCP_ZONE GCP_VM GCP_WIF_PROVIDER GCP_DEPLOY_SA AR_REPO; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository variable $name is not set (Settings > Secrets and variables > Actions > Variables)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Sign in to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Set up the Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Let Docker push to Artifact Registry
+        env:
+          REGION: ${{ vars.GCP_REGION }}
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}/api:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_REPO }}/api:latest
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/api:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}/api:buildcache,mode=max
+
+      - name: Build and push the worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/worker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}/worker:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_REPO }}/worker:latest
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/worker:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}/worker:buildcache,mode=max
+
+      - name: Build and push the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}/web:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_REPO }}/web:latest
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/web:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}/web:buildcache,mode=max
+
+      - name: Copy the deployment files to the VM
+        env:
+          VM: ${{ vars.GCP_VM }}
+          ZONE: ${{ vars.GCP_ZONE }}
+          PROJECT: ${{ vars.GCP_PROJECT }}
+        run: |
+          stage="$(mktemp -d)"
+          trap 'rm -rf "$stage"' EXIT
+          mkdir "$stage/deploy-files"
+          cp infra/compose.gcp.yaml scripts/deploy.sh scripts/verify.sh \
+             infra/gcp/db-init.sh infra/gcp/db-init.sql infra/gcp/remote-install.sh \
+             "$stage/deploy-files/"
+          gcloud compute scp --recurse --tunnel-through-iap \
+            --zone "$ZONE" --project "$PROJECT" \
+            "$stage/deploy-files" "$VM:~/"
+
+      - name: Deploy on the VM
+        env:
+          VM: ${{ vars.GCP_VM }}
+          ZONE: ${{ vars.GCP_ZONE }}
+          PROJECT: ${{ vars.GCP_PROJECT }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          gcloud compute ssh "$VM" --tunnel-through-iap \
+            --zone "$ZONE" --project "$PROJECT" \
+            --command "bash ~/deploy-files/remote-install.sh '$TAG'"
+
+      - name: Say how to open the app
+        env:
+          VM: ${{ vars.GCP_VM }}
+          ZONE: ${{ vars.GCP_ZONE }}
+          PROJECT: ${{ vars.GCP_PROJECT }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          {
+            echo "### Deployed \`$TAG\`"
+            echo
+            echo "Open the app through an IAP tunnel, then browse to http://localhost:3000"
+            echo
+            echo '```'
+            echo "gcloud compute start-iap-tunnel $VM 3000 --local-port=3000 --zone $ZONE --project $PROJECT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

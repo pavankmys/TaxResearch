@@ -20,7 +20,7 @@ Last updated: 2026-10-08, end of the session that delivered M1 to M3. The next s
 
 | Milestone | Status | Plan | Main commits |
 | --- | --- | --- | --- |
-| M0 Foundations | Done. Container check on the Debian host still open. | (audit only) | `ac54abd`, fixes `7c46477` |
+| M0 Foundations | Done. Container check on the GCP VM still open (see docs/DEPLOY_GCP.md). | (audit only) | `ac54abd`, fixes `7c46477` |
 | M1 Core data and auth | Done | `docs/plans/M1-core-data-and-auth.md` | `6d46afd` to `0a9628e` |
 | M2 Fetch, parse, store | Done | `docs/plans/M2-fetch-parse-store.md` | `70dc8bc`, `36a95c4`, `195fe19` |
 | M3a Backend: structure and metadata | Done | `docs/plans/M3-structure-and-metadata.md` | `529cc72`, `bdb86f2` |
@@ -96,7 +96,7 @@ scripts/e2e-stack.sh && (cd apps/web && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browser
 
 ## Waiting on the user
 
-1. **Debian host check.** Image builds and the stack have never run under Podman. Run `scripts/up.sh`, then `scripts/verify.sh`, then `python -m app.cli create-user ... --role platform_admin`.
+1. **GCP VM deployment.** The images, the stack and the deployment scripts have never run under Podman or on Google Cloud. Follow `docs/DEPLOY_GCP.md` (one-time bootstrap, then the "Deploy to GCP" workflow). It was written and linted, not run.
 2. **Real sample documents.** The session network policy blocked `cbic-gst.gov.in`, `taxinformation.cbic.gov.in`, `www.sci.gov.in` and `egazette.gov.in`. Either allow them in the environment settings, or put 3 to 5 PDFs in `eval/fixtures/`. Everything so far has been tested on synthetic PDFs only.
 3. **Experts.**
    - The query set is needed before M5.

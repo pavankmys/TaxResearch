@@ -34,16 +34,24 @@ RUN pip install --no-cache-dir \
     pip install --no-cache-dir -e /app/packages/legal-core && \
     pip install --no-cache-dir -e /app/packages/storage
 
+# Create /data and /watch directories for object store and watch folder (mounted as named volumes in GCP)
+RUN mkdir -p /data /watch && chown appuser:appuser /data /watch
+
 # Change ownership
 RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
 
+# Health check using heartbeat file (worker writes epoch seconds to heartbeat file)
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -m worker.heartbeat --check
+
 # Default environment
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV CONFIG_DIR=/app/config
+ENV HEARTBEAT_FILE=/tmp/worker.heartbeat
 
 # Run the worker
 CMD ["sh", "-c", "python scripts/wait_for_db.py --wait-for-table job_queue && python -m worker"]

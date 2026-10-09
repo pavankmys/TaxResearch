@@ -1,95 +1,79 @@
 #!/usr/bin/env bash
-# Verify that the TaxResearch stack is ready and healthy.
-# Waits for API and web services, checks health endpoints, runs OCR smoke test.
+# Check that a running TaxResearch stack is healthy. Exits non-zero if any check fails.
+#
+# Checks: API /ready (200 only when the database answers), web /api/health, worker heartbeat.
+# Used by deploy.sh on the VM, and by hand on a development machine.
+#
+# Settings (environment):
+#   BASE_API            default http://127.0.0.1:8000
+#   BASE_WEB            default http://127.0.0.1:3000
+#   CONTAINER_WORKER    default taxresearch-worker
+#   COMPOSE_RUNTIME     podman (default) or docker
+#   VERIFY_TIMEOUT      seconds to wait for the API, default 120
+#   SKIP_WORKER_CHECK   1 = do not check the worker (for a stack without one)
+#   VERIFY_EXTRAS       1 = also run the OCR smoke test inside the worker container
 
 set -euo pipefail
 
-# Source .env for environment variables
-if [ -f .env ]; then
-    # Export all non-empty vars from .env
-    set -a
-    source .env
-    set +a
-fi
+BASE_API="${BASE_API:-http://127.0.0.1:8000}"
+BASE_WEB="${BASE_WEB:-http://127.0.0.1:3000}"
+CONTAINER_WORKER="${CONTAINER_WORKER:-taxresearch-worker}"
+COMPOSE_RUNTIME="${COMPOSE_RUNTIME:-podman}"
+VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-120}"
+SKIP_WORKER_CHECK="${SKIP_WORKER_CHECK:-0}"
+VERIFY_EXTRAS="${VERIFY_EXTRAS:-0}"
 
-# Determine compose command
-COMPOSE_CMD="podman compose"
-if ! command -v podman &> /dev/null; then
-    COMPOSE_CMD="docker compose"
-fi
+http_code() {
+	curl -s -o /dev/null --max-time 5 -w '%{http_code}' "$1" 2>/dev/null || true
+}
 
-echo "Verifying TaxResearch stack..."
-echo ""
+echo "Verifying the stack (API ${BASE_API}, web ${BASE_WEB})"
 
-# Wait for API to be healthy
-echo "Waiting for API service..."
-TIMEOUT=120
-ELAPSED=0
-while [ $ELAPSED -lt $TIMEOUT ]; do
-    if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
-        echo "✓ API is responding"
-        break
-    fi
-    echo "  Waiting... ($ELAPSED/$TIMEOUT s)"
-    sleep 2
-    ELAPSED=$((ELAPSED + 2))
+# 1. API: wait for /ready
+elapsed=0
+while true; do
+	code="$(http_code "${BASE_API}/ready")"
+	if [ "$code" = "200" ]; then
+		echo "ok: API /ready"
+		break
+	fi
+	if [ "$elapsed" -ge "$VERIFY_TIMEOUT" ]; then
+		echo "FAILED: API /ready returned '${code:-none}' after ${VERIFY_TIMEOUT}s (503 means the database is unreachable)" >&2
+		exit 1
+	fi
+	sleep 5
+	elapsed=$((elapsed + 5))
 done
 
-if [ $ELAPSED -ge $TIMEOUT ]; then
-    echo "✗ API health check timed out"
-    exit 1
+# 2. Web
+code="$(http_code "${BASE_WEB}/api/health")"
+if [ "$code" != "200" ]; then
+	echo "FAILED: web /api/health returned '${code:-none}'" >&2
+	exit 1
 fi
+echo "ok: web /api/health"
 
-# Get and print API health status
-echo ""
-echo "API health status:"
-curl -s http://127.0.0.1:8000/health | head -c 500
-echo ""
-echo ""
-
-# Check web page
-echo "Checking web service..."
-if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000 | grep -q "200"; then
-    echo "✓ Web service is responding (HTTP 200)"
+# 3. Worker heartbeat
+if [ "$SKIP_WORKER_CHECK" = "1" ]; then
+	echo "skipped: worker heartbeat (SKIP_WORKER_CHECK=1)"
+elif "$COMPOSE_RUNTIME" exec "$CONTAINER_WORKER" python -m worker.heartbeat --check >/dev/null 2>&1; then
+	echo "ok: worker heartbeat"
 else
-    echo "✗ Web service not responding"
-    exit 1
+	echo "FAILED: worker heartbeat (is the container '${CONTAINER_WORKER}' running?)" >&2
+	exit 1
 fi
 
-echo ""
-
-# Run OCR smoke test in worker container if .venv exists locally
-if [ -d .venv ]; then
-    echo "Running OCR smoke test in local .venv..."
-    if $COMPOSE_CMD -f infra/compose.yaml exec -T worker python /app/scripts/ocr_smoke.py > /tmp/ocr_result.log 2>&1; then
-        echo "✓ OCR smoke test passed"
-    else
-        echo "✗ OCR smoke test failed"
-        cat /tmp/ocr_result.log || true
-    fi
-else
-    echo "ℹ .venv not found, skipping local OCR test"
+# 4. Optional OCR smoke test
+if [ "$VERIFY_EXTRAS" = "1" ]; then
+	log="$(mktemp)"
+	trap 'rm -f "$log"' EXIT
+	if "$COMPOSE_RUNTIME" exec "$CONTAINER_WORKER" python /app/scripts/ocr_smoke.py >"$log" 2>&1; then
+		echo "ok: OCR smoke test"
+	else
+		echo "FAILED: OCR smoke test" >&2
+		cat "$log" >&2
+		exit 1
+	fi
 fi
 
-echo ""
-
-# Run integration tests if .venv exists and DATABASE_URL is set
-if [ -d .venv ] && [ -n "${DATABASE_URL:-}" ]; then
-    echo "Running integration tests..."
-    if .venv/Scripts/python -m pytest -q -m integration -rs 2>&1 | head -20; then
-        echo "✓ Integration tests completed"
-    else
-        echo "⚠ Some integration tests may have issues (see above)"
-    fi
-else
-    echo "ℹ .venv not found or DATABASE_URL not set, skipping integration tests"
-fi
-
-echo ""
-echo "✓ Verification complete!"
-echo ""
-echo "Next steps:"
-echo "  - Web app: http://127.0.0.1:3000"
-echo "  - API: http://127.0.0.1:8000"
-echo "  - View logs: $COMPOSE_CMD -f infra/compose.yaml logs -f"
-echo "  - Stop services: $COMPOSE_CMD -f infra/compose.yaml down"
+echo "All checks passed."
