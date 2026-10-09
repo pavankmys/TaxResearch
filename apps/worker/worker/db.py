@@ -292,6 +292,35 @@ provision_versions = sa.Table(
     sa.Column("updated_at", _ts, nullable=False),
 )
 
+amendments = sa.Table(
+    "amendments",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("source_document_id", _uuid, nullable=False),
+    sa.Column("source_block_id", _uuid, nullable=True),
+    sa.Column("op", sa.Text, nullable=False),
+    sa.Column("target_provision_id", _uuid, nullable=True),
+    sa.Column("target_document_id", _uuid, nullable=True),
+    sa.Column("target_locator", postgresql.JSONB, nullable=False),
+    sa.Column("old_text", sa.Text, nullable=True),
+    sa.Column("new_text", sa.Text, nullable=True),
+    sa.Column("effective_from", sa.Date, nullable=True),
+    sa.Column("effective_condition", sa.Text, nullable=False),
+    sa.Column("bringing_into_force_doc_id", _uuid, nullable=True),
+    sa.Column("extraction_method", sa.Text, nullable=False),
+    sa.Column("extraction_conf", sa.REAL, nullable=True),
+    sa.Column("dry_run_ok", sa.Boolean, nullable=True),
+    sa.Column("dry_run_diff", sa.Text, nullable=True),
+    sa.Column("review_status", sa.Text, nullable=False),
+    sa.Column("reviewer_id", _uuid, nullable=True),
+    sa.Column("reviewed_at", _ts, nullable=True),
+    sa.Column("review_note", sa.Text, nullable=True),
+    sa.Column("applied_at", _ts, nullable=True),
+    sa.Column("updated_by", _uuid, nullable=True),
+    sa.Column("created_at", _ts, nullable=False),
+    sa.Column("updated_at", _ts, nullable=False),
+)
+
 job_queue = sa.Table(
     "job_queue",
     metadata,

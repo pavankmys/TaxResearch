@@ -27,6 +27,7 @@ from sqlalchemy.engine import Engine
 from worker import db, review
 from worker.errors import PermanentError
 from worker.ingest.build_provisions import build_provisions_for
+from worker.ingest.detect_amendments import detect_amendments_for
 from worker.ingest.loaders import LoadError, LoadRequest, submit
 from worker.settings import get_settings
 
@@ -77,6 +78,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--instrument", required=True, help="instrument code (e.g., CGST_ACT)"
     )
     build_prov_cmd.add_argument("--as-on", required=True, help="as-on date (YYYY-MM-DD)")
+
+    detect_amend_cmd = commands.add_parser(
+        "detect-amendments",
+        help="detect amendments from a document's blocks",
+    )
+    detect_amend_cmd.add_argument("--document-id", required=True, help="document UUID")
+    detect_amend_cmd.add_argument("--force", action="store_true", help="force re-detection")
+
     return parser
 
 
@@ -206,6 +215,26 @@ def main(argv: list[str] | None = None) -> int:
                             "document_id": str(doc_id),
                             "instrument_code": args.instrument,
                             "as_on_date": args.as_on,
+                        },
+                    )
+                print(json.dumps(result))
+                return 0
+            except PermanentError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+        if args.command == "detect-amendments":
+            try:
+                doc_id = UUID(args.document_id)
+            except ValueError:
+                print(f"error: not a UUID: {args.document_id}", file=sys.stderr)
+                return 2
+            try:
+                with engine.begin() as conn:
+                    result = detect_amendments_for(
+                        conn,
+                        {
+                            "document_id": str(doc_id),
+                            "force": args.force,
                         },
                     )
                 print(json.dumps(result))

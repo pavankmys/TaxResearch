@@ -16,9 +16,11 @@ from worker.ingest.acquire import make_acquire_handler
 from worker.ingest.apply_metadata import make_apply_metadata_handler
 from worker.ingest.build_provisions import make_build_provisions_handler
 from worker.ingest.classify import make_classify_handler
+from worker.ingest.detect_amendments import make_amend_detect_handler
 from worker.ingest.extract_meta import make_extract_meta_handler
 from worker.ingest.publish import make_publish_handler
 from worker.ingest.queues import (
+    AMEND_DETECT_QUEUE,
     APPLY_METADATA_QUEUE,
     BUILD_PROVISIONS_QUEUE,
     CLASSIFY_QUEUE,
@@ -96,6 +98,7 @@ def main() -> None:
     handlers[APPLY_METADATA_QUEUE] = make_apply_metadata_handler(engine, store)
     handlers[PUBLISH_QUEUE] = make_publish_handler(engine, store)
     handlers[BUILD_PROVISIONS_QUEUE] = make_build_provisions_handler(engine, store)
+    handlers[AMEND_DETECT_QUEUE] = make_amend_detect_handler(engine, store)
 
     runner = Runner(
         queue=queue,
