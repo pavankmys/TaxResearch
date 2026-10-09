@@ -28,7 +28,7 @@ from sqlalchemy.engine import Connection, Engine
 from worker import db, review
 from worker.errors import PermanentError
 from worker.ingest.metadata import required_confidence
-from worker.ingest.queues import PUBLISH_QUEUE
+from worker.ingest.queues import AMEND_DETECT_QUEUE, PUBLISH_QUEUE
 from worker.objectstore import ObjectStore
 from worker.queue import Job
 
@@ -166,6 +166,7 @@ def apply_metadata(conn: Connection, payload: Mapping[str, Any]) -> UUID:
             db.documents.c.doc_type,
             db.documents.c.canonical_id,
             db.documents.c.metadata,
+            db.documents.c.current_version_id,
         ).where(db.documents.c.id == document_id)
     ).first()
     if doc is None:
@@ -173,6 +174,7 @@ def apply_metadata(conn: Connection, payload: Mapping[str, Any]) -> UUID:
     doc_type = str(doc[0])
     current_canonical = str(doc[1])
     old: dict[str, Any] = dict(doc[2] or {})
+    current_version_id = doc[3]
 
     merged_fields: dict[str, Any] = dict(old.get("fields", {}))
     merged_conf: dict[str, float] = dict(old.get("confidence", {}))
@@ -223,6 +225,16 @@ def apply_metadata(conn: Connection, payload: Mapping[str, Any]) -> UUID:
         {"document_id": str(document_id)},
         idempotency_key=f"{document_id}:publish:{uuid4()}",
     )
+
+    # Enqueue amendment detection for notifications and orders
+    if doc_type in ("notification", "order") and current_version_id is not None:
+        db.enqueue(
+            conn,
+            AMEND_DETECT_QUEUE,
+            {"document_id": str(document_id)},
+            idempotency_key=f"{document_id}:amend_detect:{current_version_id}",
+        )
+
     logger.info(f"Document {document_id}: metadata applied ({reason})")
     return document_id
 

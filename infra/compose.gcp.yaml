@@ -1,0 +1,102 @@
+# Single-VM deployment on Compute Engine with rootless Podman.
+#
+# scripts/deploy.sh runs it as:
+#   podman-compose --env-file /opt/taxresearch/.env -p taxresearch -f compose.gcp.yaml <command>
+# with TAG exported. IMAGE_REPO and the settings below come from /opt/taxresearch/.env.
+#
+# There is no database or object-store container: the database is Cloud SQL (DATABASE_URL), and
+# documents live on the "objects" volume. The one-shot "migrate" service is run by deploy.sh
+# before "up"; the other services do not depend on it, so "up" never repeats a migration.
+# Each service gets only the settings it needs (the admin password goes to "migrate" alone).
+
+services:
+  migrate:
+    image: ${IMAGE_REPO}/api:${TAG}
+    container_name: taxresearch-migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_DISPLAY_NAME: ${ADMIN_DISPLAY_NAME:-Administrator}
+      LOG_LEVEL: ${LOG_LEVEL}
+    command:
+      - sh
+      - -c
+      - python scripts/wait_for_db.py --timeout 120 && alembic upgrade head && python -m app.cli ensure-admin
+    restart: "no"
+
+  api:
+    image: ${IMAGE_REPO}/api:${TAG}
+    container_name: taxresearch-api
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL}
+      OBJECT_STORE: ${OBJECT_STORE}
+      LOCAL_STORE_PATH: ${LOCAL_STORE_PATH}
+      RUN_MIGRATIONS: "false"
+    ports:
+      - 127.0.0.1:8000:8000
+    volumes:
+      - objects:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=4)
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: always
+
+  worker:
+    image: ${IMAGE_REPO}/worker:${TAG}
+    container_name: taxresearch-worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL}
+      OBJECT_STORE: ${OBJECT_STORE}
+      LOCAL_STORE_PATH: ${LOCAL_STORE_PATH}
+      WATCH_FOLDER: /watch
+      HEARTBEAT_FILE: /tmp/worker.heartbeat
+    volumes:
+      - objects:/data
+      - watch:/watch
+    healthcheck:
+      test: [CMD, python, -m, worker.heartbeat, --check]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: always
+
+  web:
+    image: ${IMAGE_REPO}/web:${TAG}
+    container_name: taxresearch-web
+    environment:
+      API_URL: http://api:8000
+      NODE_ENV: production
+      # Secure cookies are kept on. They work on http://localhost in Chrome, Edge and Firefox,
+      # which is how the app is reached through the IAP tunnel.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    ports:
+      - 127.0.0.1:3000:3000
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - require('http').get('http://localhost:3000/api/health', r => r.statusCode === 200 || process.exit(1)).on('error', () => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: always
+    depends_on:
+      - api
+
+volumes:
+  objects:
+  watch:

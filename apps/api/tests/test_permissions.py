@@ -23,11 +23,15 @@ def test_platform_admin_has_admin_actions() -> None:
             "jobs.retry",
             "ingest.upload",
             "miss_report.create",
+            "baseline.read",
+            "baseline.verify",
         }
     )
     assert has_permission(["platform_admin"], "users.manage")
     assert has_permission(["platform_admin"], "audit.read")
     assert has_permission(["platform_admin"], "sources.manage")
+    assert has_permission(["platform_admin"], "baseline.read")
+    assert has_permission(["platform_admin"], "baseline.verify")
 
 
 def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
@@ -45,11 +49,15 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
             "jobs.retry",
             "ingest.upload",
             "miss_report.create",
+            "baseline.read",
+            "baseline.verify",
         }
     )
     assert not has_permission(["platform_content_editor"], "users.read")
     assert not has_permission(["platform_content_editor"], "sources.manage")
     assert not has_permission(["platform_content_editor"], "audit.read")
+    assert has_permission(["platform_content_editor"], "baseline.read")
+    assert has_permission(["platform_content_editor"], "baseline.verify")
 
 
 @pytest.mark.parametrize(

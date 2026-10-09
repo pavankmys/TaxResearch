@@ -12,6 +12,7 @@ import argparse
 import os
 import sys
 import time
+import urllib.parse
 
 try:
     import psycopg
@@ -21,50 +22,62 @@ except ImportError:
 
 
 def parse_database_url(url: str) -> dict:
-    """Parse DATABASE_URL into connection parameters."""
-    # Example: postgresql://user:password@localhost:5432/dbname
-    if not url.startswith("postgresql://"):
-        raise ValueError("DATABASE_URL must start with postgresql://")
+    """Parse DATABASE_URL into connection parameters using urllib.parse.
 
-    url = url[len("postgresql://") :]
-
-    # Split auth from host
-    if "@" in url:
-        auth, hostdb = url.rsplit("@", 1)
-        if ":" in auth:
-            user, password = auth.split(":", 1)
-        else:
-            user = auth
-            password = None
+    Supports schemes: postgresql, postgres, postgresql+psycopg, postgresql+psycopg_async.
+    Query parameters (e.g. sslmode, sslrootcert, connect_timeout) are preserved.
+    """
+    # Handle schemes with underscores (like postgresql+psycopg_async) which urllib.parse
+    # doesn't recognize due to RFC 3986 restrictions. We normalize them first.
+    normalized_url = url
+    if "postgresql+psycopg_async://" in url:
+        # Replace with a RFC-compliant scheme for parsing, then validate
+        normalized_url = url.replace("postgresql+psycopg_async://", "postgresql+psycopg-async://")
+        scheme_map = {"postgresql+psycopg-async": "postgresql+psycopg_async"}
+    elif "postgresql+psycopg://" in url:
+        scheme_map = {"postgresql+psycopg": "postgresql+psycopg"}
+        normalized_url = url
     else:
-        user = None
-        password = None
-        hostdb = url
+        scheme_map = {}
 
-    # Split host from db
-    if "/" in hostdb:
-        host, dbname = hostdb.rsplit("/", 1)
-    else:
-        host = hostdb
-        dbname = None
+    parsed = urllib.parse.urlparse(normalized_url)
 
-    # Split port from host
-    if ":" in host:
-        hostname, port = host.rsplit(":", 1)
-        try:
-            port = int(port)
-        except ValueError:
-            port = 5432
-    else:
-        hostname = host
-        port = 5432
+    # Validate scheme (use original scheme names)
+    valid_schemes = (
+        "postgresql",
+        "postgres",
+        "postgresql+psycopg",
+        "postgresql+psycopg_async",
+    )
+    original_scheme = scheme_map.get(parsed.scheme, parsed.scheme)
+    if original_scheme not in valid_schemes:
+        raise ValueError(
+            f"DATABASE_URL scheme must be one of {valid_schemes}, got {original_scheme}"
+        )
+
+    # Extract and decode user/password
+    username = urllib.parse.unquote(parsed.username or "postgres")
+    password = urllib.parse.unquote(parsed.password) if parsed.password else None
+
+    # Extract hostname and port
+    hostname = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+
+    # Extract database name
+    dbname = parsed.path.lstrip("/") or "postgres"
+
+    # Parse query string into dict, keeping all parameters
+    query_params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+    # Flatten single-value parameters (parse_qs returns lists)
+    query_dict = {k: v[0] if len(v) == 1 else v for k, v in query_params.items()}
 
     return {
-        "host": hostname or "localhost",
+        "host": hostname,
         "port": port,
-        "user": user or "postgres",
+        "user": username,
         "password": password,
-        "dbname": dbname or "postgres",
+        "dbname": dbname,
+        "query_params": query_dict,
     }
 
 
@@ -84,14 +97,19 @@ def wait_for_connection(url: str, timeout: float = 30.0, interval: float = 1.0) 
 
     while time.time() - start < timeout:
         try:
-            with psycopg.connect(
-                host=params["host"],
-                port=params["port"],
-                user=params["user"],
-                password=params["password"],
-                dbname=params["dbname"],
-                connect_timeout=5,
-            ):
+            # Build connection kwargs
+            conn_kwargs = {
+                "host": params["host"],
+                "port": params["port"],
+                "user": params["user"],
+                "password": params["password"],
+                "dbname": params["dbname"],
+                "connect_timeout": 5,
+            }
+            # Add query parameters (e.g. sslmode, sslrootcert, etc.)
+            conn_kwargs.update(params.get("query_params", {}))
+
+            with psycopg.connect(**conn_kwargs):
                 db_url = f"{params['host']}:{params['port']}/{params['dbname']}"
                 print(f"✓ Database is ready at {db_url}")
                 return True
@@ -123,14 +141,19 @@ def wait_for_table(url: str, table_name: str, timeout: float = 30.0, interval: f
 
     while time.time() - start < timeout:
         try:
-            with psycopg.connect(
-                host=params["host"],
-                port=params["port"],
-                user=params["user"],
-                password=params["password"],
-                dbname=params["dbname"],
-                connect_timeout=5,
-            ) as conn:
+            # Build connection kwargs
+            conn_kwargs = {
+                "host": params["host"],
+                "port": params["port"],
+                "user": params["user"],
+                "password": params["password"],
+                "dbname": params["dbname"],
+                "connect_timeout": 5,
+            }
+            # Add query parameters (e.g. sslmode, sslrootcert, etc.)
+            conn_kwargs.update(params.get("query_params", {}))
+
+            with psycopg.connect(**conn_kwargs) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         """

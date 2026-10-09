@@ -14,7 +14,7 @@ This FSD defines what the GST Tax Research Assistant must do so it can be frozen
 | Jurisdiction | India, Goods and Services Tax (central, integrated, state, UT, compensation cess) |
 | Requirement IDs | FR-\<area\>-\<nn\> for functional, NFR-\<nn\> for non-functional |
 | Priority key | MVP = first release; P2 = second; P3 = later |
-| Delivery | MVP is built first as a POC (containers run with Podman on an on-prem Debian 13 machine, Postgres full-text search, public documents only), then hosted on AWS India region. |
+| Delivery | MVP is built first as a POC (containers run with Podman on a Google Compute Engine VM with Cloud SQL for PostgreSQL, Postgres full-text search, public documents only), then hosted on AWS India region. |
 
 Once frozen, any change to a requirement needs a version bump and sign-off from the product owner.
 
@@ -25,6 +25,7 @@ Once frozen, any change to a requirement needs a version bump and sign-off from 
 | v0.1 | 7 Oct 2026 | Initial draft |
 | v0.2 | 8 Oct 2026 | Re-scoped Release 1 to a non-LLM research repository: keyword + citation + graph search; LLM, semantic search, planning and litigation moved to P2; added extraction-quality and completeness requirements; POC-first delivery |
 | v0.2.1 | 8 Oct 2026 | POC host set to an on-prem Debian 13 machine running Podman; open decisions closed; expert panel arranged by the product owner |
+| v0.2.2 | 9 Oct 2026 | POC host changed from an on-prem Debian machine to Google Cloud: one Compute Engine VM (Debian 13, rootless Podman) with Cloud SQL for PostgreSQL, reached through an IAP tunnel; deployed by a GitHub Actions button (docs/DEPLOY_GCP.md) |
 
 ## 2. Product overview
 
@@ -410,7 +411,7 @@ No open decision blocks the freeze. The items marked 'decide before production' 
 #### Decided
 
 - [x] No generative AI in Release 1; search is keyword, citation and graph only
-- [x] MVP is built first as a POC on Podman containers (on-prem Debian 13 machine) and Postgres full-text search, then moved to AWS India region
+- [x] MVP is built first as a POC on Podman containers (Google Compute Engine VM, Debian 13) and Postgres full-text search, then moved to AWS India region
 - [x] POC corpus as listed in section 3, loaded from files, no automatic crawling
 - [x] Target customer for MVP: corporate tax teams (in-house). Matters, saved searches and export matter more than firm templates. SSO stays P2 for the POC; revisit it before production, because corporate IT teams often require it
 - [x] Case-law source: court sites and downloaded files only; no licensed reporter feed in Release 1
@@ -419,7 +420,7 @@ No open decision blocks the freeze. The items marked 'decide before production' 
 - [x] Production hosting: AWS India region (ap-south-1), with DR in ap-south-2
 - [x] Legal review of court and government site terms is a mandatory gate before any automatic crawling
 - [x] Expert panel for the query set and amendment review is arranged by the product owner (needed before M4 and M5)
-- [x] POC host: an on-prem Debian 13 machine; containers run with Podman
+- [x] POC host: a Google Compute Engine VM (Debian 13) with Cloud SQL for PostgreSQL; containers run with Podman (changed from on-prem in v0.2.2)
 
 #### Not needed before the POC (decide before production)
 

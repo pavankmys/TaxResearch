@@ -2,6 +2,7 @@
 
 import importlib
 import logging
+import os
 import signal
 import threading
 from collections.abc import Callable
@@ -12,13 +13,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from worker.config import load_ingestion_config
+from worker.heartbeat import start_heartbeat
 from worker.ingest.acquire import make_acquire_handler
 from worker.ingest.apply_metadata import make_apply_metadata_handler
+from worker.ingest.build_provisions import make_build_provisions_handler
 from worker.ingest.classify import make_classify_handler
+from worker.ingest.detect_amendments import make_amend_detect_handler
 from worker.ingest.extract_meta import make_extract_meta_handler
 from worker.ingest.publish import make_publish_handler
 from worker.ingest.queues import (
+    AMEND_DETECT_QUEUE,
     APPLY_METADATA_QUEUE,
+    BUILD_PROVISIONS_QUEUE,
     CLASSIFY_QUEUE,
     EXTRACT_META_QUEUE,
     PUBLISH_QUEUE,
@@ -93,6 +99,8 @@ def main() -> None:
     handlers[EXTRACT_META_QUEUE] = make_extract_meta_handler(engine, store)
     handlers[APPLY_METADATA_QUEUE] = make_apply_metadata_handler(engine, store)
     handlers[PUBLISH_QUEUE] = make_publish_handler(engine, store)
+    handlers[BUILD_PROVISIONS_QUEUE] = make_build_provisions_handler(engine, store)
+    handlers[AMEND_DETECT_QUEUE] = make_amend_detect_handler(engine, store)
 
     runner = Runner(
         queue=queue,
@@ -101,6 +109,12 @@ def main() -> None:
         poll_interval_seconds=settings.poll_interval_seconds,
         retry_base_seconds=settings.retry_base_seconds,
     )
+
+    # Start heartbeat thread for health checks
+    heartbeat_file = os.getenv("HEARTBEAT_FILE", "/tmp/worker.heartbeat")
+    heartbeat_thread = start_heartbeat(heartbeat_file, interval=10.0)
+    heartbeat_thread.start()
+    logging.info(f"Heartbeat started, writing to {heartbeat_file}")
 
     # Setup signal handling for graceful shutdown
     stop_event = threading.Event()

@@ -1,6 +1,6 @@
 # GST Tax Research Assistant
 
-A research platform for Indian GST law: keyword and citation search, amendment tracking, and linked legal documents. Built as a POC on Podman, then deployed to AWS for production.
+A research platform for Indian GST law: keyword and citation search, amendment tracking, and linked legal documents. Built as a POC on Podman (locally and on a Google Cloud VM), then deployed to AWS for production.
 
 **Status:** v0.2 Draft. See [FSD.md](./FSD.md) and [TSD.md](./TSD.md) for requirements and design.
 
@@ -142,6 +142,10 @@ The POST returns `202` with `ingestion_job_id`. File upload through the API is d
 ### POC (Podman, local machine)
 
 See _Quick start_ above.
+
+### POC (Google Cloud)
+
+One Compute Engine VM with Cloud SQL for PostgreSQL, deployed by a GitHub Actions button and reached through an IAP tunnel. See [docs/DEPLOY_GCP.md](docs/DEPLOY_GCP.md). It is written but has not been run yet.
 
 ### Production (AWS)
 

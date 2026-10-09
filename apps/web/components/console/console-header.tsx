@@ -6,6 +6,7 @@ import { logout } from "@/app/(console)/actions";
 export const CONSOLE_NAV = [
   { href: "/queue", label: "Queue" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/baseline", label: "Baseline" },
   { href: "/documents", label: "Documents" },
   { href: "/ingest", label: "Ingest" },
 ];

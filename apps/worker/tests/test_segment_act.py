@@ -160,3 +160,106 @@ def test_grammar_leaves_plain_text_as_tail() -> None:
     numbering = read_numbering("Some text that starts without numbering.")
     assert numbering.markers == ()
     assert numbering.tail == "Some text that starts without numbering."
+
+
+# --- Layout seen in Acts and Rules published "as amended" (synthetic text) -------------------
+
+
+def test_index_is_excluded_and_front_matter_is_preamble() -> None:
+    texts = [
+        "1. The Sample Amendment Act, 2020 (1 of 2020).",  # list of amending Acts, before the index
+        "THE SAMPLE GOODS ACT, 2017",
+        "ARRANGEMENT OF SECTIONS",
+        "CHAPTER I",
+        "PRELIMINARY",
+        "1. Short title.",
+        "2. Definitions.",
+        "THE SAMPLE GOODS ACT, 2017",
+        "ACT NO. 5 OF 2017",
+        "An Act to provide for sample tax.",
+        "CHAPTER I",
+        "PRELIMINARY",
+        "1. Short title.- (1) This Act may be called the Sample Act.",
+        "2. Definitions.- In this Act,--",
+    ]
+    result = segment("act", [SegBlock(kind="para", text=t) for t in texts])
+    assert list(result.paths) == [
+        "pre",
+        "pre",
+        "toc",
+        "toc",
+        "toc",
+        "toc",
+        "toc",
+        "pre",
+        "pre",
+        "pre",
+        "ch1",
+        "ch1",
+        "ch1.s1",
+        "ch1.s2",
+    ]
+    assert [(i.prefix, i.label) for i in result.numbered] == [("s", "1"), ("s", "2")]
+
+
+def test_footnote_lines_do_not_move_the_position() -> None:
+    texts = [
+        "5. Levy of tax.- (1) Tax shall be levied.",
+        '1. The words "sample" omitted by Act 26 of 2018, s. 2 (w.e.f. 1-2-2019).',
+        "(2) Tax is payable monthly.",
+        "6Inserted vide Notf no. 34/2017 - CT dt. 15.09.2017",
+        "(3) Tax is payable quarterly.",
+    ]
+    assert _paths("act", texts) == ["s5", "s5.fn1", "s5.2", "s5.2.fn2", "s5.3"]
+
+
+def test_out_of_sequence_markers_are_continuation_text() -> None:
+    texts = [
+        "4. Effective date.- (1) The option shall be effective from the date.",
+        "(2) The intimation shall be considered after registration.",
+        "(1) of the said rule.",  # a wrapped line, not a new subsection
+        "12. Other.",  # not the next section either: 12 is within the jump limit, so it is one
+        "3. A back-reference.",  # lower than the last section
+    ]
+    assert _paths("rules", texts) == ["r4", "r4.2", "r4.2", "r12", "r12"]
+
+
+def test_spaced_and_bracketed_markers_are_found() -> None:
+    texts = [
+        "20. Manner of distribution.- ( 1 ) The distributor shall issue invoices.",
+        "( 2 ) The credit shall be distributed.",
+        "1[21. Other matters.- ( 1 ) Sample text.",
+        "22 . Spaced number.- Sample text.",
+        "23.Unspaced heading.- Sample text.",
+    ]
+    assert _paths("act", texts) == ["s20", "s20.2", "s21", "s22", "s23"]
+
+
+def test_i_after_h_is_the_next_clause_not_a_subclause() -> None:
+    texts = [
+        "7. Sample.- (1) In this section,--",
+        "(g) the seventh item;",
+        "(h) the eighth item;",
+        "(i) the ninth item;",
+        "(j) the tenth item;",
+    ]
+    assert _paths("act", texts) == ["s7", "s7.g", "s7.h", "s7.i", "s7.j"]
+
+
+def test_schedule_items_do_not_become_sections() -> None:
+    texts = ["174. Repeal.", "SCHEDULE I", "1. Supply of sample goods.", "2. Another entry."]
+    kinds = ["para", "heading", "para", "para"]
+    assert _paths("act", texts, kinds) == ["s174", "sched1", "sched1", "sched1"]
+
+
+def test_numbered_table_row_is_not_a_section() -> None:
+    texts = ["138. Sample rule.", "150. | | Sample tariff heading and description"]
+    assert _paths("rules", texts, ["para", "table"]) == ["r138", "r138"]
+
+
+def test_table_rows_after_a_table_share_its_path() -> None:
+    texts = ["108. Appeal.- (1) Sample text.", "108. Appeal. (1) Sample", "(2) Another text"]
+    kinds = ["table", "table_row", "table_row"]
+    result = segment("rules", [SegBlock(kind=k, text=t) for t, k in zip(texts, kinds, strict=True)])
+    assert list(result.paths) == ["r108", "r108", "r108"]
+    assert [i.label for i in result.numbered] == ["108"]
