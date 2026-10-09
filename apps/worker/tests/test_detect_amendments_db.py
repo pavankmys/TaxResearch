@@ -59,7 +59,17 @@ def _purge(engine: Engine, started: datetime) -> None:
             text("DELETE FROM instruments WHERE code LIKE :code AND created_at >= :t"),
             {"code": "TEST_%", "t": started},
         )
-        conn.execute(text("DELETE FROM blocks WHERE created_at >= :t"), {"t": started})
+        conn.execute(
+            text(
+                "DELETE FROM blocks WHERE document_version_id IN "
+                "(SELECT id FROM document_versions WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text("UPDATE documents SET current_version_id = NULL WHERE created_at >= :t"),
+            {"t": started},
+        )
         conn.execute(text("DELETE FROM document_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM documents WHERE created_at >= :t"), {"t": started})
 
@@ -114,11 +124,10 @@ def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
                     .values(
                         document_version_id=version_id,
                         seq=1,
-                        kind="body",
+                        kind="para",
                         text=block_text,
                         text_sha256="text123",
                         is_boilerplate=False,
-                        updated_at=datetime.now(UTC),
                     )
                     .returning(db.blocks.c.id),
                 ).scalar_one()

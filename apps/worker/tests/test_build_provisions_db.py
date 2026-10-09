@@ -54,7 +54,17 @@ def _purge(engine: Engine, started: datetime) -> None:
         # Delete in reverse dependency order
         conn.execute(text("DELETE FROM provision_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM provisions WHERE created_at >= :t"), {"t": started})
-        conn.execute(text("DELETE FROM blocks WHERE created_at >= :t"), {"t": started})
+        conn.execute(
+            text(
+                "DELETE FROM blocks WHERE document_version_id IN "
+                "(SELECT id FROM document_versions WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text("UPDATE documents SET current_version_id = NULL WHERE created_at >= :t"),
+            {"t": started},
+        )
         conn.execute(text("DELETE FROM document_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM documents WHERE created_at >= :t"), {"t": started})
 
@@ -132,10 +142,10 @@ def test_build_provisions_creates_tree(engine: Engine) -> None:
         version_id,
         [
             {"seq": 1, "kind": "heading", "text": "CHAPTER I", "structure_path": "ch1"},
-            {"seq": 2, "kind": "text", "text": "Chapter content", "structure_path": "ch1"},
-            {"seq": 3, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
-            {"seq": 4, "kind": "text", "text": "(1) Subsection", "structure_path": "ch1.s1.1"},
-            {"seq": 5, "kind": "text", "text": "(a) Clause", "structure_path": "ch1.s1.1.a"},
+            {"seq": 2, "kind": "para", "text": "Chapter content", "structure_path": "ch1"},
+            {"seq": 3, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 4, "kind": "para", "text": "(1) Subsection", "structure_path": "ch1.s1.1"},
+            {"seq": 5, "kind": "para", "text": "(a) Clause", "structure_path": "ch1.s1.1.a"},
         ],
     )
 
@@ -168,7 +178,7 @@ def test_build_provisions_idempotent(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -208,7 +218,7 @@ def test_build_provisions_text_change(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Original text", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Original text", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -233,7 +243,7 @@ def test_build_provisions_text_change(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Modified text", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Modified text", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -277,7 +287,7 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -325,7 +335,7 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
             engine,
             version_id,
             [
-                {"seq": 1, "kind": "text", "text": "New text", "structure_path": "ch1.s1"},
+                {"seq": 1, "kind": "para", "text": "New text", "structure_path": "ch1.s1"},
             ],
         )
 
@@ -351,7 +361,7 @@ def test_build_provisions_canonical_rekey(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -382,7 +392,7 @@ def test_build_provisions_instruments_updated(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
