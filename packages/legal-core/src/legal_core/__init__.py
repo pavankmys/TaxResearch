@@ -13,6 +13,7 @@ from .ids import (
     parse_id,
     provision_id,
 )
+from .locator import Locator, Step, parse_locator
 from .text import normalise_text
 
 __all__ = [
@@ -32,4 +33,7 @@ __all__ = [
     "parse_id",
     "is_valid_id",
     "normalise_text",
+    "Locator",
+    "Step",
+    "parse_locator",
 ]
