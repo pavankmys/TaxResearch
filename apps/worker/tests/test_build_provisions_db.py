@@ -51,10 +51,29 @@ def engine(migrated_db_url: str) -> Iterator[Engine]:
 def _purge(engine: Engine, started: datetime) -> None:
     """Clean up what a test created: provisions, versions, documents, versions, blocks."""
     with engine.begin() as conn:
+        # The seeded instruments must stop pointing at a test document before it is deleted
+        conn.execute(
+            text(
+                "UPDATE instruments SET baseline_document_id = NULL, baseline_status = 'none', "
+                "baseline_as_on = NULL WHERE baseline_document_id IN "
+                "(SELECT id FROM documents WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
         # Delete in reverse dependency order
         conn.execute(text("DELETE FROM provision_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM provisions WHERE created_at >= :t"), {"t": started})
-        conn.execute(text("DELETE FROM blocks WHERE created_at >= :t"), {"t": started})
+        conn.execute(
+            text(
+                "DELETE FROM blocks WHERE document_version_id IN "
+                "(SELECT id FROM document_versions WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text("UPDATE documents SET current_version_id = NULL WHERE created_at >= :t"),
+            {"t": started},
+        )
         conn.execute(text("DELETE FROM document_versions WHERE created_at >= :t"), {"t": started})
         conn.execute(text("DELETE FROM documents WHERE created_at >= :t"), {"t": started})
 
@@ -72,17 +91,17 @@ def _insert_document(engine: Engine, canonical_id: str) -> UUID:
         doc_id = UUID(
             str(
                 conn.execute(
-                    db.documents.insert().values(
+                    db.documents.insert()
+                    .values(
                         canonical_id=canonical_id,
                         doc_type="act",
                         authority_rank=1,
                         title="Test Act",
                         status="in_force",
                         review_state="pending_review",
-                        created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
-                    ),
-                    returning=[db.documents.c.id],
+                    )
+                    .returning(db.documents.c.id),
                 ).scalar_one()
             )
         )
@@ -132,10 +151,10 @@ def test_build_provisions_creates_tree(engine: Engine) -> None:
         version_id,
         [
             {"seq": 1, "kind": "heading", "text": "CHAPTER I", "structure_path": "ch1"},
-            {"seq": 2, "kind": "text", "text": "Chapter content", "structure_path": "ch1"},
-            {"seq": 3, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
-            {"seq": 4, "kind": "text", "text": "(1) Subsection", "structure_path": "ch1.s1.1"},
-            {"seq": 5, "kind": "text", "text": "(a) Clause", "structure_path": "ch1.s1.1.a"},
+            {"seq": 2, "kind": "para", "text": "Chapter content", "structure_path": "ch1"},
+            {"seq": 3, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 4, "kind": "para", "text": "(1) Subsection", "structure_path": "ch1.s1.1"},
+            {"seq": 5, "kind": "para", "text": "(a) Clause", "structure_path": "ch1.s1.1.a"},
         ],
     )
 
@@ -149,15 +168,15 @@ def test_build_provisions_creates_tree(engine: Engine) -> None:
             },
         )
 
-    assert result["provisions"] == 5  # ch1, s1, ch1.s1, ch1.s1.1, ch1.s1.1.a
-    assert result["created"] == 5
+    assert result["provisions"] == 4  # ch1, ch1.s1, ch1.s1.1, ch1.s1.1.a
+    assert result["created"] == 4
     assert result["unchanged"] == 0
 
     # Verify provisions exist in database
     with engine.connect() as conn:
         provisions = list(conn.execute(text("SELECT path FROM provisions ORDER BY path")).scalars())
     paths = {p for p in provisions if p.startswith("ch1")}
-    assert len(paths) == 5
+    assert paths == {"ch1", "ch1.s1", "ch1.s1.1", "ch1.s1.1.a"}
 
 
 def test_build_provisions_idempotent(engine: Engine) -> None:
@@ -168,7 +187,7 @@ def test_build_provisions_idempotent(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -208,7 +227,7 @@ def test_build_provisions_text_change(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Original text", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Original text", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -233,7 +252,7 @@ def test_build_provisions_text_change(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Modified text", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Modified text", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -277,7 +296,7 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -295,11 +314,22 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
     # Manually insert an amendment version
     with engine.connect() as conn:
         prov_id = conn.execute(
-            text("SELECT id FROM provisions WHERE path = 'ch1.s1' LIMIT 1")
+            text(
+                "SELECT p.id FROM provisions p JOIN instruments i ON i.id = p.instrument_id "
+                "WHERE i.code = 'CGST_ACT' AND p.path = CAST('ch1.s1' AS ltree)"
+            )
         ).scalar()
 
+    assert prov_id is not None
     if prov_id:
         with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE provision_versions SET valid_to = :d "
+                    "WHERE provision_id = :p AND valid_to IS NULL"
+                ),
+                {"d": date(2026, 7, 1), "p": str(prov_id)},
+            )
             conn.execute(
                 db.provision_versions.insert().values(
                     provision_id=UUID(str(prov_id)),
@@ -325,7 +355,7 @@ def test_build_provisions_skips_amended(engine: Engine) -> None:
             engine,
             version_id,
             [
-                {"seq": 1, "kind": "text", "text": "New text", "structure_path": "ch1.s1"},
+                {"seq": 1, "kind": "para", "text": "New text", "structure_path": "ch1.s1"},
             ],
         )
 
@@ -351,7 +381,7 @@ def test_build_provisions_canonical_rekey(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 
@@ -371,7 +401,7 @@ def test_build_provisions_canonical_rekey(engine: Engine) -> None:
             text("SELECT canonical_id FROM documents WHERE id = :id"), {"id": str(doc_id)}
         ).scalar()
 
-    assert new_canonical == "CGST_ACT"
+    assert new_canonical == "inst:CGST_ACT"
 
 
 def test_build_provisions_instruments_updated(engine: Engine) -> None:
@@ -382,7 +412,7 @@ def test_build_provisions_instruments_updated(engine: Engine) -> None:
         engine,
         version_id,
         [
-            {"seq": 1, "kind": "text", "text": "Section 1", "structure_path": "ch1.s1"},
+            {"seq": 1, "kind": "para", "text": "Section 1", "structure_path": "ch1.s1"},
         ],
     )
 

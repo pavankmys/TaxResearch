@@ -42,7 +42,8 @@ test("an alert banner, when shown, names the severity in text", async ({ page })
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { name: "Ingestion dashboard" })).toBeVisible();
 
-  const banner = page.getByRole("alert");
+  // Next.js adds its own empty role="alert" route announcer, so pick the banner by its title.
+  const banner = page.getByRole("alert").filter({ hasText: /alerts? needs? attention/ });
   if ((await banner.count()) > 0) {
     await expect(banner.getByText(/^(Critical|Warning)$/).first()).toBeVisible();
   }

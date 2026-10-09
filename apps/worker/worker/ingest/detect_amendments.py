@@ -231,8 +231,30 @@ def detect_amendments_for(conn: Connection, payload: dict[str, Any]) -> dict[str
             )
         )
 
+    # With force, a proposal that a kept (already reviewed) amendment covers is not stored twice
+    kept = {
+        (str(row[0]) if row[0] else None, row[1], row[2], row[3])
+        for row in conn.execute(
+            sa.select(
+                db.amendments.c.source_block_id,
+                db.amendments.c.op,
+                db.amendments.c.old_text,
+                db.amendments.c.new_text,
+            ).where(db.amendments.c.source_document_id == document_id)
+        ).all()
+    }
+
     # Process each proposal
     for proposal in proposals:
+        key = (
+            str(proposal.block_ids[0]) if proposal.block_ids else None,
+            proposal.op,
+            proposal.old_text,
+            proposal.new_text,
+        )
+        if key in kept:
+            continue
+
         # Resolve the target provision
         target_provision_id = None
         target_resolved = False
