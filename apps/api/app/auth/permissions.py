@@ -17,27 +17,19 @@ _EDITOR_ACTIONS: frozenset[str] = _ANY_USER | frozenset(
         "dashboard.read",
         "jobs.retry",
         "ingest.upload",
+        "baseline.read",
+        "baseline.verify",
     }
 )
 
 PERMISSIONS: dict[str, frozenset[str]] = {
-    "platform_admin": _ANY_USER
+    "platform_admin": _EDITOR_ACTIONS
     | frozenset(
         {
             "users.read",
             "users.manage",
             "audit.read",
-            "ingest.submit",
-            "ingest.read",
-            "review.read",
-            "review.decide",
-            "documents.read",
-            "documents.edit",
-            "sources.read",
             "sources.manage",
-            "dashboard.read",
-            "jobs.retry",
-            "ingest.upload",
         }
     ),
     "platform_content_editor": _EDITOR_ACTIONS,

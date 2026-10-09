@@ -1173,6 +1173,113 @@
         "title": "IngestionJobStatus",
         "type": "object"
       },
+      "InstrumentList": {
+        "description": "List of all instruments.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InstrumentList",
+        "type": "object"
+      },
+      "InstrumentOut": {
+        "description": "One instrument's baseline status and verification info.",
+        "properties": {
+          "baseline_as_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline As On"
+          },
+          "baseline_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Document Id"
+          },
+          "baseline_status": {
+            "title": "Baseline Status",
+            "type": "string"
+          },
+          "baseline_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Verified At"
+          },
+          "baseline_verified_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Verified By Name"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "provision_count": {
+            "title": "Provision Count",
+            "type": "integer"
+          },
+          "section_count": {
+            "title": "Section Count",
+            "type": "integer"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "short_name",
+          "baseline_status",
+          "baseline_as_on",
+          "baseline_document_id",
+          "baseline_verified_at",
+          "baseline_verified_by_name",
+          "provision_count",
+          "section_count"
+        ],
+        "title": "InstrumentOut",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "Email and password to exchange for a token.",
         "properties": {
@@ -1501,6 +1608,207 @@
           "blocks"
         ],
         "title": "ProblemPage",
+        "type": "object"
+      },
+      "ProvisionDetail": {
+        "description": "One provision with full text.",
+        "properties": {
+          "block_count": {
+            "title": "Block Count",
+            "type": "integer"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "number_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Label"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Document Id"
+          },
+          "source_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "text_sha256": {
+            "title": "Text Sha256",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "level",
+          "number_label",
+          "heading",
+          "text",
+          "valid_from",
+          "block_count",
+          "source_document_id",
+          "source_page",
+          "text_sha256"
+        ],
+        "title": "ProvisionDetail",
+        "type": "object"
+      },
+      "ProvisionRow": {
+        "description": "One provision in the tree: minimal info for tree display.",
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "has_baseline": {
+            "title": "Has Baseline",
+            "type": "boolean"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "number_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Label"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "text_chars": {
+            "title": "Text Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "parent_id",
+          "level",
+          "number_label",
+          "heading",
+          "depth",
+          "text_chars",
+          "has_baseline"
+        ],
+        "title": "ProvisionRow",
+        "type": "object"
+      },
+      "ProvisionsList": {
+        "description": "Instrument with its provisions tree and numbering gaps.",
+        "properties": {
+          "instrument": {
+            "$ref": "#/components/schemas/InstrumentOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProvisionRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "numbering_gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Numbering Gaps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "instrument",
+          "items",
+          "numbering_gaps"
+        ],
+        "title": "ProvisionsList",
         "type": "object"
       },
       "QueueLagRow": {
@@ -3494,6 +3802,167 @@
         "summary": "Logout",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/v1/baseline/instruments": {
+      "get": {
+        "description": "List all instruments with their baseline status.",
+        "operationId": "list_instruments_v1_baseline_instruments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Instruments",
+        "tags": [
+          "baseline"
+        ]
+      }
+    },
+    "/v1/baseline/instruments/{code}/provisions": {
+      "get": {
+        "description": "List provisions of an instrument in tree order with numbering gaps.",
+        "operationId": "list_provisions_v1_baseline_instruments__code__provisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionsList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Provisions",
+        "tags": [
+          "baseline"
+        ]
+      }
+    },
+    "/v1/baseline/instruments/{code}/provisions/{provision_id}": {
+      "get": {
+        "description": "Get one provision's text and metadata.",
+        "operationId": "get_provision_v1_baseline_instruments__code__provisions__provision_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "provision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provision",
+        "tags": [
+          "baseline"
+        ]
+      }
+    },
+    "/v1/baseline/instruments/{code}/verify": {
+      "post": {
+        "description": "Mark the baseline of an instrument as verified.",
+        "operationId": "verify_baseline_v1_baseline_instruments__code__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstrumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Baseline",
+        "tags": [
+          "baseline"
         ]
       }
     },

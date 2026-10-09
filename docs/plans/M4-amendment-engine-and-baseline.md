@@ -72,4 +72,20 @@ This Windows machine has no Postgres or Tesseract. Integration tests and OCR nee
 
 ## Review changes / Known gaps
 
-(To be filled in at the end of each slice.)
+### M4a review changes and decisions
+- **Real documents changed the work.** The vetted PDFs exposed layout the synthetic fixtures never had, so M4a includes parse and segment hardening (all inside the frozen "fix what the real documents expose"): off-axis watermark characters dropped; paragraph breaks at amended-text numbering (`1[20.`, `80 .`, `31.Residual`); segmenter `seg-2` with an index (`toc`) and front-matter (`pre`) span, footnote lines (`<path>.fn<k>`), sequence guards for numbers and sub-items, schedule paths (`sched<n>`), table-row grouping, and cleanup of leading marker noise.
+- **Baseline load is manual, not automatic.** `ingest.build_provisions` takes `{document_id, instrument_code, as_on_date}` and runs from the `build-provisions` CLI (or the queue). A PDF does not say which instrument it is, so it is not chained after `publish`.
+- **Builder rewritten in review.** The first version classified path tokens by position and skipped a clause directly under a section. It now classifies each token by its own shape.
+- **Verification keeps its value.** Re-running a load with unchanged text leaves `baseline_status=verified`; any created or replaced version resets it to `loaded`.
+- **Permissions.** New `baseline.read` and `baseline.verify`, held by `platform_content_editor` and `platform_admin`.
+- **Offline result on the vetted PDFs** (parse, segment, build; no database): IGST Act 28 sections, 0 numbering problems; CGST Act 183 sections in 21 chapters, 3 gaps (s42, s43, s173); CGST Rules 180 rules in 19 chapters, 4 gaps (r57, r111, r112, r114).
+
+### M4a known gaps
+- **SQL not executed locally.** There is no Postgres on the dev machine. `test_build_provisions_db.py` and `test_baseline_db.py` are collected but were not run; CI (or the GCP box) is the first real run. The baseline UI was not run against a live API either, and there is no baseline Playwright spec.
+- **Gaps need a human.** The remaining numbering gaps may be omitted sections or sections merged into a neighbouring block. The console shows them; nothing fixes them automatically. A correction path arrives with `manual_correction` in M4c.
+- **Inline first sub-item.** In "44. Annual return.- (1) Every registered person...", the "(1)" is inside the section's own text, so there is no `s44.1` provision. M4b target resolution must fall back to searching the section text for sub-section (1).
+- **Merged paragraphs.** A section that starts in the middle of a parsed paragraph still lands in the previous block.
+- **Footnote continuation lines** that wrap onto a second line stay in the section text; footnotes longer than 300 characters are not recognised.
+- **Forms and annexures** (`form<n>`, `annex<n>`, `sched<n>`) are not provisions; Schedule entries are not loaded.
+- **No Tesseract here**, so the OCR path was not exercised on these files (all three have a text layer).
+- **Rules baseline date.** The Rules PDF is current only to 2019. Its `--as-on` date must be given when it is loaded.

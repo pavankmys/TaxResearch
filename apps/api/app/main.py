@@ -19,6 +19,7 @@ from app.routers import (
     admin_audit,
     admin_users,
     auth,
+    baseline,
     ingestion,
     miss_reports,
     platform_dashboard,
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(admin_users.router)
     app.include_router(admin_audit.router)
+    app.include_router(baseline.router)
     app.include_router(ingestion.router)
     app.include_router(platform_documents.router)
     app.include_router(platform_sources.router)

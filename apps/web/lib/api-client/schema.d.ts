@@ -128,6 +128,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/baseline/instruments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Instruments
+         * @description List all instruments with their baseline status.
+         */
+        get: operations["list_instruments_v1_baseline_instruments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/baseline/instruments/{code}/provisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Provisions
+         * @description List provisions of an instrument in tree order with numbering gaps.
+         */
+        get: operations["list_provisions_v1_baseline_instruments__code__provisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/baseline/instruments/{code}/provisions/{provision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provision
+         * @description Get one provision's text and metadata.
+         */
+        get: operations["get_provision_v1_baseline_instruments__code__provisions__provision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/baseline/instruments/{code}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Baseline
+         * @description Mark the baseline of an instrument as verified.
+         */
+        post: operations["verify_baseline_v1_baseline_instruments__code__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -910,6 +990,40 @@ export interface components {
             url: string | null;
         };
         /**
+         * InstrumentList
+         * @description List of all instruments.
+         */
+        InstrumentList: {
+            /** Items */
+            items: components["schemas"]["InstrumentOut"][];
+        };
+        /**
+         * InstrumentOut
+         * @description One instrument's baseline status and verification info.
+         */
+        InstrumentOut: {
+            /** Baseline As On */
+            baseline_as_on: string | null;
+            /** Baseline Document Id */
+            baseline_document_id: string | null;
+            /** Baseline Status */
+            baseline_status: string;
+            /** Baseline Verified At */
+            baseline_verified_at: string | null;
+            /** Baseline Verified By Name */
+            baseline_verified_by_name: string | null;
+            /** Code */
+            code: string;
+            /** Kind */
+            kind: string;
+            /** Provision Count */
+            provision_count: number;
+            /** Section Count */
+            section_count: number;
+            /** Short Name */
+            short_name: string;
+        };
+        /**
          * LoginRequest
          * @description Email and password to exchange for a token.
          */
@@ -1040,6 +1154,78 @@ export interface components {
             page_text_truncated: boolean;
             /** Status */
             status: string;
+        };
+        /**
+         * ProvisionDetail
+         * @description One provision with full text.
+         */
+        ProvisionDetail: {
+            /** Block Count */
+            block_count: number;
+            /** Heading */
+            heading: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Level */
+            level: string;
+            /** Number Label */
+            number_label: string | null;
+            /** Path */
+            path: string;
+            /** Source Document Id */
+            source_document_id: string | null;
+            /** Source Page */
+            source_page: number | null;
+            /** Text */
+            text: string;
+            /** Text Sha256 */
+            text_sha256: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+        };
+        /**
+         * ProvisionRow
+         * @description One provision in the tree: minimal info for tree display.
+         */
+        ProvisionRow: {
+            /** Depth */
+            depth: number;
+            /** Has Baseline */
+            has_baseline: boolean;
+            /** Heading */
+            heading: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Level */
+            level: string;
+            /** Number Label */
+            number_label: string | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Path */
+            path: string;
+            /** Text Chars */
+            text_chars: number;
+        };
+        /**
+         * ProvisionsList
+         * @description Instrument with its provisions tree and numbering gaps.
+         */
+        ProvisionsList: {
+            instrument: components["schemas"]["InstrumentOut"];
+            /** Items */
+            items: components["schemas"]["ProvisionRow"][];
+            /** Numbering Gaps */
+            numbering_gaps: string[];
         };
         /**
          * QueueLagRow
@@ -1789,6 +1975,120 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_instruments_v1_baseline_instruments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentList"];
+                };
+            };
+        };
+    };
+    list_provisions_v1_baseline_instruments__code__provisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionsList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_provision_v1_baseline_instruments__code__provisions__provision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                provision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_baseline_v1_baseline_instruments__code__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstrumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
