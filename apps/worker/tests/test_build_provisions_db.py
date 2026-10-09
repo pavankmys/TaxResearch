@@ -80,7 +80,6 @@ def _insert_document(engine: Engine, canonical_id: str) -> UUID:
                         title="Test Act",
                         status="in_force",
                         review_state="pending_review",
-                        created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
                     )
                     .returning(db.documents.c.id),

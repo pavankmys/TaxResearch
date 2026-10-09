@@ -86,7 +86,6 @@ def _insert_document(engine: Engine, canonical_id: str, doc_type: str, doc_date:
                         status="in_force",
                         review_state="pending_review",
                         doc_date=doc_date,
-                        created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
                     )
                     .returning(db.documents.c.id),
@@ -119,7 +118,6 @@ def _insert_version(engine: Engine, document_id: UUID, block_text: str) -> UUID:
                         text=block_text,
                         text_sha256="text123",
                         is_boilerplate=False,
-                        created_at=datetime.now(UTC),
                         updated_at=datetime.now(UTC),
                     )
                     .returning(db.blocks.c.id),

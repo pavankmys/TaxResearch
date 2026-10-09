@@ -194,6 +194,27 @@ def _provision(
     return prov_id
 
 
+def _drop_instrument(conn: Any, code: str) -> None:
+    """Delete a test instrument with its provisions and versions (foreign keys)."""
+    params = {"code": code}
+    conn.execute(
+        text(
+            "DELETE FROM provision_versions WHERE provision_id IN "
+            "(SELECT p.id FROM provisions p JOIN instruments i ON i.id = p.instrument_id "
+            "WHERE i.code = :code)"
+        ),
+        params,
+    )
+    conn.execute(
+        text(
+            "DELETE FROM provisions WHERE instrument_id IN "
+            "(SELECT id FROM instruments WHERE code = :code)"
+        ),
+        params,
+    )
+    conn.execute(text("DELETE FROM instruments WHERE code = :code"), params)
+
+
 def _provision_version(
     conn: Any,
     provision_id: uuid.UUID,
@@ -270,7 +291,7 @@ def test_provisions_tree_order(engine: Engine, client: TestClient, editor: Perso
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_provisions_numbering_gaps(engine: Engine, client: TestClient, editor: Person) -> None:
@@ -296,7 +317,7 @@ def test_provisions_numbering_gaps(engine: Engine, client: TestClient, editor: P
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_provision_detail(engine: Engine, client: TestClient, editor: Person) -> None:
@@ -305,8 +326,8 @@ def test_provision_detail(engine: Engine, client: TestClient, editor: Person) ->
         code = _unique("TEST:ACT")
         instrument_id = _instrument(conn, code)
         prov_id = _provision(conn, instrument_id, "1", level="section", number_label="1")
-        text = "This is the full text of section 1."
-        _provision_version(conn, prov_id, text, heading="Section 1")
+        body_text = "This is the full text of section 1."
+        _provision_version(conn, prov_id, body_text, heading="Section 1")
 
     response = client.get(
         f"/v1/baseline/instruments/{code}/provisions/{prov_id}",
@@ -315,12 +336,12 @@ def test_provision_detail(engine: Engine, client: TestClient, editor: Person) ->
     assert response.status_code == 200
     data = response.json()
     assert data["heading"] == "Section 1"
-    assert data["text"] == text
+    assert data["text"] == body_text
     assert data["level"] == "section"
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_provision_detail_404(engine: Engine, client: TestClient, editor: Person) -> None:
@@ -353,7 +374,7 @@ def test_verify_baseline_success(engine: Engine, client: TestClient, admin: Pers
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_verify_baseline_409_already_verified(
@@ -379,7 +400,7 @@ def test_verify_baseline_409_already_verified(
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_verify_baseline_409_not_loaded(engine: Engine, client: TestClient, admin: Person) -> None:
@@ -395,7 +416,7 @@ def test_verify_baseline_409_not_loaded(engine: Engine, client: TestClient, admi
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_verify_baseline_403_non_reviewer(
@@ -415,7 +436,7 @@ def test_verify_baseline_403_non_reviewer(
 
     # Cleanup
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM instruments WHERE code = :code"), {"code": code})
+        _drop_instrument(conn, code)
 
 
 def test_verify_baseline_404(engine: Engine, client: TestClient, admin: Person) -> None:
