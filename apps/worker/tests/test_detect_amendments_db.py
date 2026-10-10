@@ -68,7 +68,18 @@ def _purge(engine: Engine, started: datetime) -> None:
             {"t": started},
         )
         conn.execute(
-            text("UPDATE documents SET current_version_id = NULL WHERE created_at >= :t"),
+            text(
+                "DELETE FROM chunks WHERE document_version_id IN "
+                "(SELECT id FROM document_versions WHERE created_at >= :t) "
+                "OR document_id IN (SELECT id FROM documents WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text(
+                "DELETE FROM links WHERE document_id IN "
+                "(SELECT id FROM documents WHERE created_at >= :t)"
+            ),
             {"t": started},
         )
         conn.execute(text("DELETE FROM document_versions WHERE created_at >= :t"), {"t": started})

@@ -84,13 +84,20 @@ PIPELINE_QUEUES = (
     EXTRACT_META_QUEUE,
     APPLY_METADATA_QUEUE,
     PUBLISH_QUEUE,
+    "ingest.index",
 )
 
 
 def _purge(engine: Engine, started: datetime) -> None:
     """Delete what a test created: review tasks, jobs, versions, documents, test editors."""
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM review_tasks WHERE opened_at >= :t"), {"t": started})
+        conn.execute(
+            text(
+                "DELETE FROM review_tasks WHERE opened_at >= :t "
+                "OR assignee_id IN (SELECT id FROM users WHERE email LIKE :p)"
+            ),
+            {"t": started, "p": f"{EDITOR_EMAIL_PREFIX}%"},
+        )
         conn.execute(
             text("DELETE FROM job_queue WHERE queue = ANY(:queues)"),
             {"queues": list(PIPELINE_QUEUES)},
@@ -111,6 +118,21 @@ def _purge(engine: Engine, started: datetime) -> None:
             text(
                 "UPDATE documents SET current_version_id = NULL WHERE current_version_id IN "
                 "(SELECT id FROM document_versions WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text(
+                "DELETE FROM chunks WHERE document_version_id IN "
+                "(SELECT id FROM document_versions WHERE created_at >= :t) "
+                "OR document_id IN (SELECT id FROM documents WHERE created_at >= :t)"
+            ),
+            {"t": started},
+        )
+        conn.execute(
+            text(
+                "DELETE FROM links WHERE document_id IN "
+                "(SELECT id FROM documents WHERE created_at >= :t)"
             ),
             {"t": started},
         )
