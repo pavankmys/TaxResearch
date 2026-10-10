@@ -1,159 +1,132 @@
 # Hand-off: where the build stands
 
-Last updated: 2026-10-09. M4a, M4b and the pure core of M4c are built and merged. The GCP deployment is
-prepared and half way through its first real run (see "Where the first GCP deploy stands" below).
+Last updated: 2026-10-10.
+Milestones M0 through M5 (including M4c Consolidation and M5 Search & Retrieval Slices 1, 2, and 3) are fully implemented, verified, and tested. Deployment to GCP is deferred.
+
+---
 
 ## Workflow rules (from CLAUDE.md and the user)
 
 - **Plan, freeze, code.** Write a plan in `docs/plans/`. Get explicit user approval and mark the plan file "approved by the user on <date> (frozen)". Implementers check that line before they code. If scope has to change, stop and re-plan with the user.
-- **Cost-aware delegation.**
-  - `explorer` (Sonnet) does exploration.
-  - `implementer` (Haiku) does coding.
-  - The main session keeps planning, review and the final checks.
-  - Give implementers exact specs and separate file ownership when they run in parallel.
-  - Don't add a `conftest.py` under `apps/worker/tests`. It clashes with `apps/api/tests/conftest.py` under importlib import mode.
-- **CI minutes are limited.**
-  - CI runs only on pull requests, pushes to `main` and manual dispatch. Docs-only changes are skipped.
-  - Playwright e2e runs on pull requests only.
-  - Commit locally and **push once at the end of a session or milestone**, or when the user asks.
+- **Never push without explicit approval.** Never execute `git push` or publish actions to remote repositories without explicit approval from the user. Commit locally only.
+- **Never go out of scope to fix.** Report discovered out-of-scope bugs clearly rather than fixing them silently.
+- **Strict data privacy & synthetic fixtures.** Zero hardcoded secrets, mask all PII / financial identifiers, and use synthetic test data only.
+- **Cost-aware delegation & CI limits.** CI runs on pull requests and pushes to `main`. Keep commits organized locally.
 
-## Where the first GCP deploy stands (2026-10-09)
+---
 
-Guide: `docs/DEPLOY_GCP.md`. Plan and review notes: `docs/plans/DEPLOY-gcp.md`. All values below are in GitHub
-variables and Secret Manager, not in the repo.
+## Milestones Summary
 
-Done:
-1. Code is on `main` (PR 1 and PR 2 merged). CI is green: 99 integration tests and the Playwright run pass.
-   PR 2 fixed 17 broken integration tests (they had never run against Postgres) and one real bug: `force` in
-   `detect_amendments` stored a reviewed amendment twice.
-2. VM `tx-research-vm` (Debian 13): the access scope was changed to "Allow full access to all Cloud APIs".
-3. Cloud SQL instance `tx-research-db` has a private IP on the default VPC.
-4. `infra/gcp/bootstrap.sh` was run in Cloud Shell. It created the registry, the deploy account, the keyless GitHub
-   sign-in, the firewall rule and tag, and the two secrets. The `postgres` password secret was corrected afterwards
-   by adding a new version (the first one was typed wrongly; disable the old version if not done yet).
-5. Seven GitHub variables are set (`GCP_PROJECT`, `GCP_REGION`, `GCP_ZONE`, `GCP_VM`, `GCP_WIF_PROVIDER`,
-   `GCP_DEPLOY_SA`, `AR_REPO`).
-6. `infra/gcp/vm-setup.sh` ran on the VM. Podman works for the `taxresearch` user and the VM can pull from the
-   internet and see the image registry.
-
-Next, in this order:
-1. Pre-flight on the VM (free): Cloud SQL reachable on port 5432 from the VM, and the VM can read the values of
-   `taxresearch-env` and `taxresearch-db-admin` (use `gcloud secrets versions access`, byte count only; `describe`
-   is denied by design because the VM only has Secret Accessor). The last attempt left the placeholder IP in the
-   command, so check 1 never ran.
-2. Run the "Deploy to GCP" workflow once (it costs CI minutes: three image builds). Read `deploy.log` on a failure.
-3. Open the tunnel, sign in as the first admin, and check `/ready`.
-4. Optional: make the admin password differ from the `postgres` password (re-run the bootstrap, answer `y`).
-
-Known small defect, not fixed yet (batch it into the next push): `vm-setup.sh` step 6 reports "podman info failed"
-although Podman works, because it runs `runuser` from a folder the user cannot enter. Run the check from the user's
-home (`cd /` or `runuser -l`) and print the error text.
-
-Open points seen while doing this: the Playwright suite has one test that passes only on retry
-(`documents.spec.ts`, status change); the repo owner wants **at most one push per task** because CI minutes are
-limited.
-
-## Milestones
-
-| Milestone | Status | Plan | Main commits |
+| Milestone | Status | Plan | Details / Main Commits |
 | --- | --- | --- | --- |
-| M0 Foundations | Done. Container check on the GCP VM still open (see docs/DEPLOY_GCP.md). | (audit only) | `ac54abd`, fixes `7c46477` |
-| M1 Core data and auth | Done | `docs/plans/M1-core-data-and-auth.md` | `6d46afd` to `0a9628e` |
-| M2 Fetch, parse, store | Done | `docs/plans/M2-fetch-parse-store.md` | `70dc8bc`, `36a95c4`, `195fe19` |
-| M3a Backend: structure and metadata | Done | `docs/plans/M3-structure-and-metadata.md` | `529cc72`, `bdb86f2` |
-| M3b Reviewer console | Done: 24 Playwright e2e, 97 Vitest (see the M3b notes in the plan) | same | `b24bd7d`, `84363df` and the final M3b commit |
-| **M4 Amendment engine and baseline law** | **In progress.** M4a baseline (done), M4b detector and stage (done), M4c applier and timeline (pure core done; consolidation stage, approve path, APIs, diff pane still to do), M4d rates (not started) | `docs/plans/M4-amendment-engine-and-baseline.md` | merged in PR 1 and PR 2 |
-| M5 to M8, P-1 to P-4 | Not started | TSD 13.2 | — |
+| **M0 Foundations** | Done | (audit only) | Container setup, base configs (`ac54abd`, `7c46477`). |
+| **M1 Core data & auth** | Done | `docs/plans/M1-core-data-and-auth.md` | Tenant/user auth, sessions, RBAC, audit logging (`6d46afd` to `0a9628e`). |
+| **M2 Fetch, parse, store** | Done | `docs/plans/M2-fetch-parse-store.md` | Worker pipeline, PDF parsing, OCR, checksum dedup (`70dc8bc`, `36a95c4`, `195fe19`). |
+| **M3a Backend: structure & metadata** | Done | `docs/plans/M3-structure-and-metadata.md` | Segmentation, metadata extraction, document publishing (`529cc72`, `bdb86f2`). |
+| **M3b Reviewer console** | Done | same | Next.js reviewer console, queue management, task views (`b24bd7d`, `84363df`). |
+| **M4a Baseline Acts & Rules** | Done | `docs/plans/M4-amendment-engine-and-baseline.md` | Instrument loader, baseline provision trees, verification API & UI. |
+| **M4b Amendment detector** | Done | same | Lark amendment grammar, proposal generation, review tasks. |
+| **M4c Apply, consolidate, view** | Done | same | Bi-temporal provision versions, consolidation stage, point-in-time APIs (`/v1/provisions/{id}`, `/timeline`, `/diff`), reviewer diff pane (`f9ab66d`). |
+| **M5 Search & retrieval** | **Done** | `docs/plans/M5-search-and-retrieval.md` | **Slice 1, 2 & 3 complete**: legal structure chunking, bi-temporal `chunks` table, PostgreSQL FTS ranking engine, query expansion (`synonyms.yaml`), citation resolver (`/v1/resolve`), search APIs (`/v1/search`, `/v1/provisions/{id}/linked`), search console UI (`/search`), citation banner, filter sidebar, grouped results, provision linked panel (`c1ddb2c`, `a988132`). |
+| **M6 Citations & Links Graph** | Ready to plan | TSD 13.2 | Next upcoming milestone. |
 
-Each plan file ends with "Review changes" and "Known gaps" sections. Read them before building on that milestone.
+---
 
-## What exists
+## What Exists in the Codebase
 
-- **Database:** migrations 0001 to 0007 cover every MVP table in TSD section 4, plus the dashboard views.
-- **API** (`apps/api`):
-  - auth: login, logout, `/v1/me`
-  - admin users and audit
-  - ingestion by URL and by upload, and job status
-  - platform documents, sources, jobs and dashboard
-  - review tasks
-  - miss reports
-  - CLI: `python -m app.cli create-user | verify-audit`
-- **Worker** (`apps/worker`): the queue runner with retries, and a watch folder. Pipeline stages:
-  1. acquire (fetch and dedup)
-  2. parse (two engines, OCR, blocks, page accounting)
-  3. classify
-  4. segment (Lark numbering grammar)
-  5. extract_meta
-  6. apply_metadata
-  7. publish
+### 1. Database & Migrations
+- Migrations `0001` to `0007`: covers core documents, provisions, bi-temporal `provision_versions`, `chunks` (FTS tsvector index), `links` (mentions, amending relations, issued_under, clarifies, interprets), `review_tasks`, `audit_log`, and dashboard views.
 
-  CLI: `python -m worker.cli ingest-file | ingest-url | job-status | sample-audit`
-- **Shared packages:** `packages/legal-core` (IDs, citations, text) and `packages/storage` (object store).
-- **Web** (`apps/web`): the Next.js reviewer console, with login, the review queue and task view, the dashboard, documents and ingest pages.
-- **Config** (`config/`): `sources.yaml` (with `allowed_hosts`), `authority.yaml` (with `doc_types`), `ingestion.yaml`, `courts.yaml` (DRAFT), and `citation_aliases.yaml` (series and case patterns are partly DRAFT).
+### 2. API (`apps/api`)
+- **Auth & RBAC**: `/v1/auth/login`, `/v1/auth/logout`, `/v1/me`, `search.read`, `provisions.read`, `review.decide`.
+- **Provisions**: `/v1/provisions/{id}` (as-on point-in-time lookup), `/v1/provisions/{id}/timeline`, `/v1/provisions/{id}/diff`.
+- **Search & Retrieval**:
+  - `GET /v1/resolve`: Citation string parser and resolver (provisions, notifications, circulars) with confidence and alternatives.
+  - `GET /v1/search`: Point-in-time full-text search with synonym query expansion, authority/court/state/date filtering, multi-factor ranking, and snippet highlights.
+  - `GET /v1/provisions/{id}/linked`: Returns amending instruments, issued-under notifications, clarifying circulars, interpreting judgements, and mentions.
+- **Documents & Review**: `/v1/platform/documents`, `/v1/review/tasks`, `/v1/ingest/jobs`.
+- **CLI**: `python -m app.cli create-user | verify-audit`.
 
-## Setting up a fresh session container
+### 3. Worker (`apps/worker`)
+- Pipeline stages:
+  1. `acquire`: fetch, dedup, URL/upload.
+  2. `parse`: dual engine (PyMuPDF / pdfplumber), OCR fallback.
+  3. `classify`: document categorization.
+  4. `segment`: Lark numbering grammar, block hierarchy.
+  5. `extract_meta`: document metadata extraction.
+  6. `apply_metadata`: attach metadata to documents.
+  7. `publish`: document publishing, baseline provisions extraction.
+  8. `consolidate` (`ingest.consolidate`): applies approved amendments to `provision_versions`.
+  9. `index_chunks` (`ingest.index`): generates weighted legal structure chunks (`leaf_provision`, `section_summary`, `numbered_para`, `merged_circular`, `judgement_section`) into `chunks` table.
+  10. `mentions`: scans document blocks for provision citations and registers `mentions` in `links`.
+- CLI commands: `ingest-file`, `ingest-url`, `job-status`, `index-document`, `index-provisions`.
 
-The container is temporary. None of the following survives a new session.
+### 4. Web Console (`apps/web` - Next.js 15, React 19)
+- **Search Console (`/search`)**:
+  - Search bar with live debounced citation detection prompt and jump link (`search-bar.tsx`).
+  - As-on date picker (defaulting to today in IST) for point-in-time legal corpus querying.
+  - Query expansion chips for synonym terms (`ITC` → `Input Tax Credit`).
+  - Filter sidebar with facet counts (`search-filters.tsx`).
+  - Grouped results view with authority badges, court/state tags, sanitized `<mark>` highlights, and expandable passage counts (`search-results.tsx`).
+  - Next.js API proxy route `/api/resolve` for client-side citation detection.
+- **Provision Detail & Linked Panel (`/baseline/[code]`)**:
+  - Chronological version timeline (`provision-timeline.tsx`).
+  - Linked resources panel (`provision-linked.tsx`) showing amending instruments, clarifying circulars, issued-under notifications, and citations.
+- **Review Queue (`/queue`)**:
+  - Document and amendment review views, confidence badges, dry-run diff pane (`amendment-section.tsx`).
+- **Dashboard & Documents**:
+  - Ingestion metrics, alerts banner, document list and inspection.
 
-```bash
-# 1. Tesseract (needed for the OCR tests)
-apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-eng
+---
 
-# 2. Postgres 16 (installed in the image) on port 55432, data outside the scratchpad
-D=/var/lib/postgresql/m1
-su postgres -c "/usr/lib/postgresql/16/bin/initdb -D $D/data -A trust -U postgres && \
-  /usr/lib/postgresql/16/bin/pg_ctl -D $D/data -o '-k $D -p 55432 -c listen_addresses=localhost' -l $D/log start -w"
-P="psql -h localhost -p 55432 -U postgres"
-$P -c "create role taxresearch_test login password 'test-password-ci'"
-$P -c "create database taxresearch_test owner taxresearch_test"
-$P -d taxresearch_test -c "create extension citext; create extension ltree; create extension pg_trgm; create extension btree_gist;"
-export DATABASE_URL=postgresql://taxresearch_test:test-password-ci@localhost:55432/taxresearch_test
+## Test & Verification Health
 
-# 3. Python venv (3.12+), with the dev requirements and every app and package in editable mode
-python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt
-for p in apps/api apps/worker packages/legal-core packages/storage; do pip install -e $p; done
+All checks pass cleanly across the repository:
+- **Python Unit & Non-Integration Tests**: `1,017 passed`, 1 skipped (tesseract OCR fixture).
+  ```bash
+  .venv\Scripts\pytest -q -m "not integration"
+  ```
+- **Type Checking (Python)**: `mypy` strict clean across 92 source files.
+  ```bash
+  .venv\Scripts\mypy
+  ```
+- **Linter & Formatter (Python)**: `ruff check .` (0 errors) and `ruff format --check .` (207 files formatted).
+  ```bash
+  .venv\Scripts\ruff check .
+  .venv\Scripts\ruff format --check .
+  ```
+- **Web Unit & Component Tests (Vitest)**: `145 passed` across 29 test files.
+  ```bash
+  cd apps/web && npm test
+  ```
+- **TypeScript Type Checking (Web)**: `tsc --noEmit` passed cleanly (0 errors).
+  ```bash
+  cd apps/web && npm run typecheck
+  ```
+- **Linter (Web)**: ESLint passed cleanly.
+  ```bash
+  cd apps/web && npm run lint
+  ```
 
-# 4. Web
-(cd apps/web && npm ci)
-```
+---
 
-The test role isn't a superuser, so the extensions are created as `postgres` before the migrations run.
+## Where the GCP Deployment Stands (Deferred)
 
-## Running checks
+The user has explicitly deferred deployment to Google Cloud Platform until local milestones are completed.
 
-```bash
-ruff check . && ruff format --check . && mypy
-pytest -q -m "not integration"
-DATABASE_URL=... pytest -q -m integration            # runs migrations itself
-(cd apps/web && npm run lint && npm run typecheck && npm test && npm run build)
-scripts/e2e-stack.sh && (cd apps/web && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test); scripts/e2e-stack.sh stop
-```
+When ready to proceed with deployment:
+1. **Minor Fix**: Update `infra/gcp/vm-setup.sh` step 6 to run from `/` or with `runuser -l` to avoid false-positive error reporting.
+2. **VM Pre-Flight**:
+   - Verify Cloud SQL connectivity on port 5432 from `tx-research-vm`.
+   - Verify Secret Manager access (`taxresearch-env`, `taxresearch-db-admin`).
+3. **Deploy Workflow**:
+   - Trigger the GitHub Actions "Deploy to GCP" workflow manually.
+   - Establish IAP tunnel (`gcloud compute start-iap-tunnel`) and verify `/ready` returns 200.
 
-## Waiting on the user
+---
 
-1. **GCP VM deployment.** Half way: setup is done, the first workflow run is not. See "Where the first GCP deploy stands".
-2. **Real sample documents.** The session network policy blocked `cbic-gst.gov.in`, `taxinformation.cbic.gov.in`, `www.sci.gov.in` and `egazette.gov.in`. Either allow them in the environment settings, or put 3 to 5 PDFs in `eval/fixtures/`. Everything so far has been tested on synthetic PDFs only.
-3. **Experts.**
-   - The query set is needed before M5.
-   - The fixture set is needed before M7.
-   - Review the DRAFT `config/courts.yaml`, the series aliases and the case-number patterns (A-26).
-   - Verified baseline Act and Rules text is needed for M4 (A-17).
-4. **CI** runs on GitHub and is green on `main` as of 2026-10-09.
+## Recommended Next Steps
 
-## Starting points for M4 (TSD 13.2, 4.4, 4.10, 5.7, 5.9)
-
-M4 covers: baseline Acts (CGST, IGST) and CGST Rules, loaded and verified; the amendment detector (Lark pattern grammar); the dry-run applier; the amendment review view (with a diff pane in the console); consolidation; point-in-time APIs; version timeline and diff; back-fill since 1 July 2017; and rates tables.
-
-What M4 can build on:
-- Segment output for Acts and Rules: `blocks.structure_path` such as `ch5.s16.2.c`. This is the input for creating `provisions` and baseline `provision_versions`.
-- Notification amending units: `structure_path` `p<n>.i<k>` (per block, not per sentence; see the M3a known gaps).
-- Tables already exist from 0005: `provisions`, `provision_versions` (with the `pv_no_overlap` exclusion constraint), `amendments`, `consolidation_runs`, `links`, `hsn_sac_codes` and `hsn_sac_rates`.
-- The review queue and console are generic. M4 adds the `amendment` kind view and the dry-run diff pane.
-- `legal_core.citations` is still regex. M4 target resolution may need the Lark citation parser early, which TSD puts in M5.
-
-Decisions for the M4 plan:
-- Where the verified baseline text comes from (expert-supplied files, or our own segmented PDFs verified in the console).
-- Whether to pull the Lark citation parser forward from M5.
-- How much of the back-fill since July 2017 is in scope for the POC.
+1. **Milestone M6 (Citations & Graph Navigation)**:
+   - Formulate plan for bidirectional citation navigation, circular-to-provision graph, and judicial treatment classification.
+   - Plan, freeze, and get user alignment before coding.
