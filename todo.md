@@ -55,20 +55,26 @@ Last updated: 2026-10-10
 
 ---
 
-### Slice 3: Search Console UI (Next.js Frontend) - Active ⏳
-- [ ] **API Client**:
-  - [ ] Export OpenAPI schema and regenerate TypeScript definitions (`apps/web/lib/api-client/schema.d.ts`).
-- [ ] **Search UI Components (`apps/web`)**:
-  - [ ] Search bar with real-time citation detection prompt.
-  - [ ] Point-in-time `as_on` date picker (defaulting to today in IST).
-  - [ ] Query expansion chips ("Also searched: Input Tax Credit").
-  - [ ] Filter sidebar (document types, authorities, date ranges, topics).
-  - [ ] Grouped results cards with binding/authority badges and expandable child passages.
-- [ ] **Provision Linked Resources Drawer**:
-  - [ ] Display linked amending instruments, circulars, judgements, and mentions on provision views.
-- [ ] **Unit Tests & Verification**:
-  - [ ] Vitest component tests in `apps/web`.
-  - [ ] TypeScript typecheck and ESLint pass.
+### Slice 3: Search Console UI (Next.js Frontend) - Completed ✅
+- [x] **API Client**:
+  - [x] Export OpenAPI schema and regenerate TypeScript definitions (`apps/web/lib/api-client/schema.d.ts`).
+  - [x] Created `/api/resolve` Next.js proxy route handler (`apps/web/app/api/resolve/route.ts`).
+- [x] **Search UI Components (`apps/web`)**:
+  - [x] Search bar with real-time citation detection prompt (`apps/web/components/search/search-bar.tsx`).
+  - [x] Point-in-time `as_on` date picker (defaulting to today in IST).
+  - [x] Query expansion chips ("Also expanded to: ...").
+  - [x] Filter sidebar with facet counts (`apps/web/components/search/search-filters.tsx`).
+  - [x] Grouped results cards with authority/doc-type badges, sanitized snippet highlights, and child passage count (`apps/web/components/search/search-results.tsx`).
+  - [x] Search Console page (`apps/web/app/(console)/search/page.tsx`).
+  - [x] Added Search to console navigation (`apps/web/components/console/console-header.tsx`).
+- [x] **Provision Linked Resources Panel**:
+  - [x] Created `ProvisionLinked` component (`apps/web/components/provisions/provision-linked.tsx`) displaying amending instruments, issued-under notifications, clarifying circulars, judgements, and mentions.
+  - [x] Integrated `ProvisionLinked` into baseline provision view (`apps/web/app/(console)/baseline/[code]/page.tsx`).
+- [x] **Unit Tests & Verification**:
+  - [x] Vitest component test suites: `provision-linked.test.tsx` (3/3), `search-bar.test.tsx` (2/2), `search-filters.test.tsx` (4/4), `search-results.test.tsx` (3/3).
+  - [x] 145 Vitest tests across 29 test files passing in `apps/web`.
+  - [x] TypeScript typecheck clean (`tsc --noEmit`).
+  - [x] ESLint clean (`npm run lint`).
 
 ---
 

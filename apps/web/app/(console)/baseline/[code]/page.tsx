@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ProvisionTree } from "@/components/baseline/provision-tree";
 import { ProvisionTimeline } from "@/components/provisions/provision-timeline";
+import { ProvisionLinked } from "@/components/provisions/provision-linked";
 import { StatusBadge } from "@/components/baseline/status-badge";
 import { VerifyForm } from "@/components/baseline/verify-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,6 +14,7 @@ import type { components } from "@/lib/api-client/schema";
 import { apiClient } from "@/lib/server/api";
 
 type ProvisionTimelineItem = components["schemas"]["ProvisionTimelineItem"];
+type ProvisionLinkedResponse = components["schemas"]["ProvisionLinkedResponse"];
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -52,18 +54,23 @@ export default async function BaselineDetailPage({
   let detail = null;
 
   let timelineItems: ProvisionTimelineItem[] = [];
+  let linkedData: ProvisionLinkedResponse | null = null;
 
   if (selectedId) {
-    const [detailResponse, timelineResponse] = await Promise.all([
+    const [detailResponse, timelineResponse, linkedResponse] = await Promise.all([
       client.GET("/v1/baseline/instruments/{code}/provisions/{provision_id}", {
         params: { path: { code, provision_id: selectedId } },
       }),
       client.GET("/v1/provisions/{provision_id}/timeline", {
         params: { path: { provision_id: selectedId } },
       }),
+      client.GET("/v1/provisions/{id}/linked", {
+        params: { path: { id: selectedId } },
+      }),
     ]);
     detail = detailResponse.data;
     timelineItems = timelineResponse.data?.items ?? [];
+    linkedData = linkedResponse.data ?? null;
     if (!detail && detailResponse.response.status !== 404) {
       return (
         <section className="space-y-6">
@@ -177,6 +184,12 @@ export default async function BaselineDetailPage({
                 <div className="space-y-3 border-t pt-4">
                   <h3 className="text-sm font-semibold">Version History & Timeline</h3>
                   <ProvisionTimeline provisionId={selectedId} items={timelineItems} />
+                </div>
+              )}
+
+              {linkedData && (
+                <div className="space-y-3 border-t pt-4">
+                  <ProvisionLinked linked={linkedData} />
                 </div>
               )}
             </>

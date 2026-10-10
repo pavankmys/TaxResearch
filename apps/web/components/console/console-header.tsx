@@ -4,6 +4,7 @@ import { NavLink } from "@/components/console/nav-link";
 import { logout } from "@/app/(console)/actions";
 
 export const CONSOLE_NAV = [
+  { href: "/search", label: "Search" },
   { href: "/queue", label: "Queue" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/baseline", label: "Baseline" },

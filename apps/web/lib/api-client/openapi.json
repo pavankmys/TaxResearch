@@ -39,6 +39,31 @@
         "title": "Alert",
         "type": "object"
       },
+      "AlternativeMatch": {
+        "description": "An alternative resolution candidate.",
+        "properties": {
+          "canonical_id": {
+            "title": "Canonical Id",
+            "type": "string"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical_id",
+          "title",
+          "entity_id"
+        ],
+        "title": "AlternativeMatch",
+        "type": "object"
+      },
       "AmendingDocumentSummary": {
         "description": "Summary of the document that introduced an amendment.",
         "properties": {
@@ -1521,6 +1546,93 @@
         "title": "InstrumentOut",
         "type": "object"
       },
+      "LinkedDocumentItem": {
+        "description": "A document linked to a legal provision.",
+        "properties": {
+          "authority_rank": {
+            "title": "Authority Rank",
+            "type": "integer"
+          },
+          "canonical_id": {
+            "title": "Canonical Id",
+            "type": "string"
+          },
+          "confidence": {
+            "default": 1.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "doc_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "in_force_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Force Date"
+          },
+          "link_id": {
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "link_type": {
+            "title": "Link Type",
+            "type": "string"
+          },
+          "source_block_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Block Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "link_id",
+          "link_type",
+          "document_id",
+          "title",
+          "doc_type",
+          "canonical_id",
+          "authority_rank"
+        ],
+        "title": "LinkedDocumentItem",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "Email and password to exchange for a token.",
         "properties": {
@@ -2057,6 +2169,45 @@
         "title": "ProvisionDiffResponse",
         "type": "object"
       },
+      "ProvisionLinkedResponse": {
+        "description": "All instruments and mentions linked to a provision (TSD 6.10, FR-KM-09, FR-RES-14).",
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "groups": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/LinkedDocumentItem"
+              },
+              "type": "array"
+            },
+            "title": "Groups",
+            "type": "object"
+          },
+          "provision_id": {
+            "format": "uuid",
+            "title": "Provision Id",
+            "type": "string"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provision_id",
+          "total_count",
+          "groups",
+          "counts"
+        ],
+        "title": "ProvisionLinkedResponse",
+        "type": "object"
+      },
       "ProvisionRow": {
         "description": "One provision in the tree: minimal info for tree display.",
         "properties": {
@@ -2390,6 +2541,78 @@
           "lag_minutes"
         ],
         "title": "QueueLagRow",
+        "type": "object"
+      },
+      "ResolveResponse": {
+        "description": "Citation resolution result.",
+        "properties": {
+          "alternatives": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AlternativeMatch"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "canonical_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Id"
+          },
+          "confidence": {
+            "default": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "boolean"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "matched"
+        ],
+        "title": "ResolveResponse",
         "type": "object"
       },
       "RetryAccepted": {
@@ -2904,6 +3127,207 @@
           "resolution"
         ],
         "title": "ReviewTaskUpdate",
+        "type": "object"
+      },
+      "SearchItemModel": {
+        "description": "A search result entry.",
+        "properties": {
+          "authority_rank": {
+            "title": "Authority Rank",
+            "type": "integer"
+          },
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_kind": {
+            "title": "Chunk Kind",
+            "type": "string"
+          },
+          "court_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Court Level"
+          },
+          "doc_canonical_id": {
+            "title": "Doc Canonical Id",
+            "type": "string"
+          },
+          "doc_title": {
+            "title": "Doc Title",
+            "type": "string"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "heading_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading Path"
+          },
+          "passage_count": {
+            "default": 1,
+            "title": "Passage Count",
+            "type": "integer"
+          },
+          "provision_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provision Version Id"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Code"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "structure_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure Path"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "doc_type",
+          "doc_title",
+          "doc_canonical_id",
+          "authority_rank",
+          "chunk_kind",
+          "snippet",
+          "score"
+        ],
+        "title": "SearchItemModel",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "description": "Full-text search response with facets and query expansion (TSD 8.2).",
+        "properties": {
+          "as_on": {
+            "format": "date",
+            "title": "As On",
+            "type": "string"
+          },
+          "expanded_terms": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Expanded Terms",
+            "type": "array"
+          },
+          "groups": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Groups",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchItemModel"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "as_on",
+          "total_count",
+          "groups",
+          "items"
+        ],
+        "title": "SearchResponse",
         "type": "object"
       },
       "SourceHealthRow": {
@@ -5690,6 +6114,50 @@
         ]
       }
     },
+    "/v1/provisions/{id}/linked": {
+      "get": {
+        "description": "Return all instruments and mentions linked to a provision (TSD 6.10, FR-KM-09, FR-RES-14).",
+        "operationId": "get_provision_linked_v1_provisions__id__linked_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionLinkedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provision Linked",
+        "tags": [
+          "search"
+        ]
+      }
+    },
     "/v1/provisions/{provision_id}": {
       "get": {
         "description": "Return provision details and the version active at `as_on` (or currently active).",
@@ -5914,6 +6382,249 @@
         "summary": "Get Provision Timeline",
         "tags": [
           "provisions"
+        ]
+      }
+    },
+    "/v1/resolve": {
+      "get": {
+        "description": "Resolve a citation string to a document or provision (TSD 6.3, FR-RES-02).",
+        "operationId": "resolve_citation_v1_resolve_get",
+        "parameters": [
+          {
+            "description": "Citation string to resolve",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Citation string to resolve",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Citation",
+        "tags": [
+          "resolve"
+        ]
+      }
+    },
+    "/v1/search": {
+      "get": {
+        "description": "Search the tax research corpus with point-in-time filtering and ranking (TSD 6.1 - 6.6).",
+        "operationId": "search_corpus_v1_search_get",
+        "parameters": [
+          {
+            "description": "Search query string",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Search query string",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Point-in-time date (default: today)",
+            "in": "query",
+            "name": "as_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (default: today)",
+              "title": "As On"
+            }
+          },
+          {
+            "description": "Filter by doc_type list",
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by doc_type list",
+              "title": "Types"
+            }
+          },
+          {
+            "description": "Filter by court level",
+            "in": "query",
+            "name": "court",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by court level",
+              "title": "Court"
+            }
+          },
+          {
+            "description": "Filter by state code",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by state code",
+              "title": "State"
+            }
+          },
+          {
+            "description": "Filter documents from date",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter documents from date",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "Filter documents to date",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter documents to date",
+              "title": "Date To"
+            }
+          },
+          {
+            "description": "Enable query expansion using synonyms",
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Enable query expansion using synonyms",
+              "title": "Expand",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Page limit",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Page limit",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset for pagination",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset for pagination",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Corpus",
+        "tags": [
+          "search"
         ]
       }
     },

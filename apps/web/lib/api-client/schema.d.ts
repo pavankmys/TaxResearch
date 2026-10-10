@@ -614,6 +614,26 @@ export interface paths {
         patch: operations["update_source_v1_platform_sources__code__patch"];
         trace?: never;
     };
+    "/v1/provisions/{id}/linked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provision Linked
+         * @description Return all instruments and mentions linked to a provision (TSD 6.10, FR-KM-09, FR-RES-14).
+         */
+        get: operations["get_provision_linked_v1_provisions__id__linked_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/provisions/{provision_id}": {
         parameters: {
             query?: never;
@@ -674,6 +694,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve Citation
+         * @description Resolve a citation string to a document or provision (TSD 6.3, FR-RES-02).
+         */
+        get: operations["resolve_citation_v1_resolve_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Corpus
+         * @description Search the tax research corpus with point-in-time filtering and ranking (TSD 6.1 - 6.6).
+         */
+        get: operations["search_corpus_v1_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/version": {
         parameters: {
             query?: never;
@@ -712,6 +772,21 @@ export interface components {
             message: string;
             /** Subject */
             subject: string | null;
+        };
+        /**
+         * AlternativeMatch
+         * @description An alternative resolution candidate.
+         */
+        AlternativeMatch: {
+            /** Canonical Id */
+            canonical_id: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Title */
+            title: string;
         };
         /**
          * AmendingDocumentSummary
@@ -1169,6 +1244,43 @@ export interface components {
             short_name: string;
         };
         /**
+         * LinkedDocumentItem
+         * @description A document linked to a legal provision.
+         */
+        LinkedDocumentItem: {
+            /** Authority Rank */
+            authority_rank: number;
+            /** Canonical Id */
+            canonical_id: string;
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+            /** Doc Date */
+            doc_date?: string | null;
+            /** Doc Type */
+            doc_type: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** In Force Date */
+            in_force_date?: string | null;
+            /**
+             * Link Id
+             * Format: uuid
+             */
+            link_id: string;
+            /** Link Type */
+            link_type: string;
+            /** Source Block Id */
+            source_block_id?: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
          * LoginRequest
          * @description Email and password to exchange for a token.
          */
@@ -1385,6 +1497,27 @@ export interface components {
             to_version: components["schemas"]["VersionRef"];
         };
         /**
+         * ProvisionLinkedResponse
+         * @description All instruments and mentions linked to a provision (TSD 6.10, FR-KM-09, FR-RES-14).
+         */
+        ProvisionLinkedResponse: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Groups */
+            groups: {
+                [key: string]: components["schemas"]["LinkedDocumentItem"][];
+            };
+            /**
+             * Provision Id
+             * Format: uuid
+             */
+            provision_id: string;
+            /** Total Count */
+            total_count: number;
+        };
+        /**
          * ProvisionRow
          * @description One provision in the tree: minimal info for tree display.
          */
@@ -1507,6 +1640,32 @@ export interface components {
             queue: string;
             /** Queued */
             queued: number;
+        };
+        /**
+         * ResolveResponse
+         * @description Citation resolution result.
+         */
+        ResolveResponse: {
+            /**
+             * Alternatives
+             * @default []
+             */
+            alternatives: components["schemas"]["AlternativeMatch"][];
+            /** Canonical Id */
+            canonical_id?: string | null;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /** Entity Id */
+            entity_id?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Matched */
+            matched: boolean;
+            /** Title */
+            title?: string | null;
         };
         /**
          * RetryAccepted
@@ -1670,6 +1829,83 @@ export interface components {
             subject_type: string;
             /** Title */
             title: string | null;
+        };
+        /**
+         * SearchItemModel
+         * @description A search result entry.
+         */
+        SearchItemModel: {
+            /** Authority Rank */
+            authority_rank: number;
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Chunk Kind */
+            chunk_kind: string;
+            /** Court Level */
+            court_level?: string | null;
+            /** Doc Canonical Id */
+            doc_canonical_id: string;
+            /** Doc Title */
+            doc_title: string;
+            /** Doc Type */
+            doc_type: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Heading Path */
+            heading_path?: string | null;
+            /**
+             * Passage Count
+             * @default 1
+             */
+            passage_count: number;
+            /** Provision Version Id */
+            provision_version_id?: string | null;
+            /** Score */
+            score: number;
+            /** Snippet */
+            snippet: string;
+            /** State Code */
+            state_code?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Structure Path */
+            structure_path?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid To */
+            valid_to?: string | null;
+        };
+        /**
+         * SearchResponse
+         * @description Full-text search response with facets and query expansion (TSD 8.2).
+         */
+        SearchResponse: {
+            /**
+             * As On
+             * Format: date
+             */
+            as_on: string;
+            /**
+             * Expanded Terms
+             * @default []
+             */
+            expanded_terms: string[];
+            /** Groups */
+            groups: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["SearchItemModel"][];
+            /** Query */
+            query: string;
+            /** Total Count */
+            total_count: number;
         };
         /**
          * SourceHealthRow
@@ -3030,6 +3266,37 @@ export interface operations {
             };
         };
     };
+    get_provision_linked_v1_provisions__id__linked_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionLinkedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_provision_v1_provisions__provision_id__get: {
         parameters: {
             query?: {
@@ -3122,6 +3389,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvisionTimelineResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_citation_v1_resolve_get: {
+        parameters: {
+            query: {
+                /** @description Citation string to resolve */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolveResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_corpus_v1_search_get: {
+        parameters: {
+            query: {
+                /** @description Search query string */
+                q: string;
+                /** @description Point-in-time date (default: today) */
+                as_on?: string | null;
+                /** @description Filter by doc_type list */
+                types?: string[] | null;
+                /** @description Filter by court level */
+                court?: string | null;
+                /** @description Filter by state code */
+                state?: string | null;
+                /** @description Filter documents from date */
+                date_from?: string | null;
+                /** @description Filter documents to date */
+                date_to?: string | null;
+                /** @description Enable query expansion using synonyms */
+                expand?: boolean;
+                /** @description Page limit */
+                limit?: number;
+                /** @description Offset for pagination */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
                 };
             };
             /** @description Validation Error */
