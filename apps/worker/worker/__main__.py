@@ -21,6 +21,7 @@ from worker.ingest.classify import make_classify_handler
 from worker.ingest.consolidate import make_consolidate_handler
 from worker.ingest.detect_amendments import make_amend_detect_handler
 from worker.ingest.extract_meta import make_extract_meta_handler
+from worker.ingest.index_chunks import make_index_handler
 from worker.ingest.publish import make_publish_handler
 from worker.ingest.queues import (
     AMEND_DETECT_QUEUE,
@@ -29,6 +30,7 @@ from worker.ingest.queues import (
     CLASSIFY_QUEUE,
     CONSOLIDATE_QUEUE,
     EXTRACT_META_QUEUE,
+    INDEX_QUEUE,
     PUBLISH_QUEUE,
     SEGMENT_QUEUE,
 )
@@ -104,6 +106,7 @@ def main() -> None:
     handlers[BUILD_PROVISIONS_QUEUE] = make_build_provisions_handler(engine, store)
     handlers[AMEND_DETECT_QUEUE] = make_amend_detect_handler(engine, store)
     handlers[CONSOLIDATE_QUEUE] = make_consolidate_handler(engine, store)
+    handlers[INDEX_QUEUE] = make_index_handler(engine)
 
     runner = Runner(
         queue=queue,

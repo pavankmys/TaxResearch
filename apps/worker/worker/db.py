@@ -357,6 +357,38 @@ links = sa.Table(
     sa.Column("updated_at", _ts, nullable=False),
 )
 
+chunks = sa.Table(
+    "chunks",
+    metadata,
+    sa.Column("id", _uuid, primary_key=True, server_default=sa.text("uuid_generate_v7()")),
+    sa.Column("tenant_id", _uuid, nullable=True),
+    sa.Column("document_id", _uuid, nullable=False),
+    sa.Column("document_version_id", _uuid, nullable=False),
+    sa.Column("provision_version_id", _uuid, nullable=True),
+    sa.Column("chunk_kind", sa.Text, nullable=False),
+    sa.Column("structure_path", sa.Text, nullable=True),
+    sa.Column("heading_path", sa.Text, nullable=True),
+    sa.Column("text", sa.Text, nullable=False),
+    sa.Column("token_count", sa.Integer, nullable=False),
+    sa.Column("text_sha256", sa.Text, nullable=False),
+    sa.Column("block_start_id", _uuid, nullable=True),
+    sa.Column("block_end_id", _uuid, nullable=True),
+    sa.Column("page_start", sa.Integer, nullable=True),
+    sa.Column("page_end", sa.Integer, nullable=True),
+    sa.Column("para_label", sa.Text, nullable=True),
+    sa.Column("authority_rank", sa.SmallInteger, nullable=False),
+    sa.Column("doc_type", sa.Text, nullable=False),
+    sa.Column("court_level", sa.Text, nullable=True),
+    sa.Column("state_code", sa.Text, nullable=True),
+    sa.Column("status_at_index", sa.Text, nullable=True),
+    sa.Column("valid_from", sa.Date, nullable=True),
+    sa.Column("valid_to", sa.Date, nullable=True),
+    sa.Column("topic_ids", postgresql.ARRAY(_uuid), nullable=False, server_default=sa.text("'{}'")),
+    sa.Column("tsv", postgresql.TSVECTOR, nullable=True),
+    sa.Column("is_current", sa.Boolean, nullable=False, server_default=sa.text("true")),
+    sa.Column("created_at", _ts, nullable=False),
+)
+
 job_queue = sa.Table(
     "job_queue",
     metadata,
@@ -684,3 +716,35 @@ def count_page_extractions(conn: Connection, version_id: UUID) -> int:
             .where(page_extractions.c.document_version_id == version_id)
         ).scalar_one()
     )
+
+
+_INSERT_CHUNK_PG = sa.text(
+    """
+    INSERT INTO chunks (
+        tenant_id, document_id, document_version_id, provision_version_id,
+        chunk_kind, structure_path, heading_path, text, token_count, text_sha256,
+        block_start_id, block_end_id, page_start, page_end, para_label,
+        authority_rank, doc_type, court_level, state_code, status_at_index,
+        valid_from, valid_to, topic_ids, tsv, is_current, created_at
+    ) VALUES (
+        :tenant_id, :document_id, :document_version_id, :provision_version_id,
+        :chunk_kind, :structure_path, :heading_path, :text, :token_count, :text_sha256,
+        :block_start_id, :block_end_id, :page_start, :page_end, :para_label,
+        :authority_rank, :doc_type, :court_level, :state_code, :status_at_index,
+        :valid_from, :valid_to, :topic_ids,
+        setweight(to_tsvector('english', coalesce(:heading_path, '')), 'A') ||
+        setweight(to_tsvector('english', :text), 'B'),
+        :is_current, :created_at
+    )
+    """
+)
+
+
+def insert_chunks(conn: Connection, rows: list[dict[str, Any]]) -> None:
+    """Bulk-insert chunks into the chunks table computing the tsvector."""
+    if not rows:
+        return
+    if conn.dialect.name == "postgresql":
+        conn.execute(_INSERT_CHUNK_PG, rows)
+    else:
+        conn.execute(chunks.insert(), rows)

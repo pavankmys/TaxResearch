@@ -153,6 +153,17 @@ def publish(conn: Connection, payload: dict[str, Any], today: date | None = None
 
     conn.execute(db.corpus_versions.insert().values(reason=f"publish {canonical_id}"))
     _publish_job(conn, document_id, job_id, now)
+
+    # Index document blocks and extract legal provision mentions (TSD 5.10 & 6.10)
+    try:
+        from worker.ingest.index_chunks import index_document
+        from worker.ingest.mentions import index_document_mentions
+
+        index_document(conn, document_id)
+        index_document_mentions(conn, document_id)
+    except Exception as exc:
+        logger.warning(f"Indexing or mention extraction for {document_id} had warning: {exc}")
+
     logger.info(f"Document {document_id}: published as {state}")
     return state
 

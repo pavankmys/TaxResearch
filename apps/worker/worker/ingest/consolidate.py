@@ -305,6 +305,12 @@ def consolidate_provision(
         conn.execute(
             db.corpus_versions.insert().values(reason=f"consolidation for provision {provision_id}")
         )
+        try:
+            from worker.ingest.index_chunks import index_provisions
+
+            index_provisions(conn, provision_id=provision_id)
+        except Exception as exc:
+            logger.warning(f"Indexing provision {provision_id} had warning: {exc}")
 
     logger.info(
         f"Consolidated provision {provision_id}: {versions_written} versions written, "

@@ -26,6 +26,7 @@ def test_platform_admin_has_admin_actions() -> None:
             "baseline.read",
             "baseline.verify",
             "provisions.read",
+            "search.read",
         }
     )
     assert has_permission(["platform_admin"], "users.manage")
@@ -34,6 +35,7 @@ def test_platform_admin_has_admin_actions() -> None:
     assert has_permission(["platform_admin"], "baseline.read")
     assert has_permission(["platform_admin"], "baseline.verify")
     assert has_permission(["platform_admin"], "provisions.read")
+    assert has_permission(["platform_admin"], "search.read")
 
 
 def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
@@ -54,6 +56,7 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
             "baseline.read",
             "baseline.verify",
             "provisions.read",
+            "search.read",
         }
     )
     assert not has_permission(["platform_content_editor"], "users.read")
@@ -62,6 +65,7 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
     assert has_permission(["platform_content_editor"], "baseline.read")
     assert has_permission(["platform_content_editor"], "baseline.verify")
     assert has_permission(["platform_content_editor"], "provisions.read")
+    assert has_permission(["platform_content_editor"], "search.read")
 
 
 @pytest.mark.parametrize(
@@ -82,6 +86,7 @@ def test_every_role_can_file_a_miss_report_and_read_provisions(role: str) -> Non
     """
     assert has_permission([role], "miss_report.create")
     assert has_permission([role], "provisions.read")
+    assert has_permission([role], "search.read")
 
 
 @pytest.mark.parametrize(

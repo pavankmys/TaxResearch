@@ -86,6 +86,19 @@ def build_parser() -> argparse.ArgumentParser:
     detect_amend_cmd.add_argument("--document-id", required=True, help="document UUID")
     detect_amend_cmd.add_argument("--force", action="store_true", help="force re-detection")
 
+    index_doc_cmd = commands.add_parser(
+        "index-document",
+        help="index a document into search chunks and extract mentions",
+    )
+    index_doc_cmd.add_argument("--document-id", required=True, help="document UUID")
+
+    index_prov_cmd = commands.add_parser(
+        "index-provisions",
+        help="index legal provisions into search chunks",
+    )
+    index_prov_cmd.add_argument("--provision-id", help="provision UUID (optional)")
+    index_prov_cmd.add_argument("--instrument-id", help="instrument UUID (optional)")
+
     return parser
 
 
@@ -238,6 +251,42 @@ def main(argv: list[str] | None = None) -> int:
                         },
                     )
                 print(json.dumps(result))
+                return 0
+            except PermanentError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+        if args.command == "index-document":
+            try:
+                doc_id = UUID(args.document_id)
+            except ValueError:
+                print(f"error: not a UUID: {args.document_id}", file=sys.stderr)
+                return 2
+            try:
+                with engine.begin() as conn:
+                    from worker.ingest.index_chunks import index_document
+                    from worker.ingest.mentions import index_document_mentions
+
+                    chunks_count = index_document(conn, doc_id)
+                    mentions_count = index_document_mentions(conn, doc_id)
+                res = {
+                    "document_id": str(doc_id),
+                    "chunks": chunks_count,
+                    "mentions": mentions_count,
+                }
+                print(json.dumps(res))
+                return 0
+            except PermanentError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 2
+        if args.command == "index-provisions":
+            prov_id = UUID(args.provision_id) if args.provision_id else None
+            inst_id = UUID(args.instrument_id) if args.instrument_id else None
+            try:
+                with engine.begin() as conn:
+                    from worker.ingest.index_chunks import index_provisions
+
+                    count = index_provisions(conn, instrument_id=inst_id, provision_id=prov_id)
+                print(json.dumps({"chunks": count}))
                 return 0
             except PermanentError as exc:
                 print(f"error: {exc}", file=sys.stderr)

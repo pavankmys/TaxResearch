@@ -27,7 +27,9 @@ from app.routers import (
     platform_jobs,
     platform_sources,
     provisions,
+    resolve,
     review_tasks,
+    search,
 )
 from app.settings import get_settings
 
@@ -187,7 +189,9 @@ def create_app() -> FastAPI:
     app.include_router(platform_dashboard.router)
     app.include_router(miss_reports.router)
     app.include_router(provisions.router)
+    app.include_router(resolve.router)
     app.include_router(review_tasks.router)
+    app.include_router(search.router)
 
     return app
 

@@ -2,8 +2,9 @@
 
 from collections.abc import Iterable
 
-# Granted to every role: any signed-in user can read provisions and report missed search results.
-_ANY_USER: frozenset[str] = frozenset({"miss_report.create", "provisions.read"})
+# Granted to every role: any signed-in user can search, read provisions,
+# and report missed search results.
+_ANY_USER: frozenset[str] = frozenset({"miss_report.create", "provisions.read", "search.read"})
 
 _EDITOR_ACTIONS: frozenset[str] = _ANY_USER | frozenset(
     {
