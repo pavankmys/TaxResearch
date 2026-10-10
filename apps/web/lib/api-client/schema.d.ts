@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ready
+         * @description Readiness check endpoint. Returns 503 if database is unreachable.
+         */
+        get: operations["ready_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/audit": {
         parameters: {
             query?: never;
@@ -594,6 +614,66 @@ export interface paths {
         patch: operations["update_source_v1_platform_sources__code__patch"];
         trace?: never;
     };
+    "/v1/provisions/{provision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provision
+         * @description Return provision details and the version active at `as_on` (or currently active).
+         */
+        get: operations["get_provision_v1_provisions__provision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provisions/{provision_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provision Diff
+         * @description Compare two versions of a provision (either by version IDs or by valid dates).
+         */
+        get: operations["get_provision_diff_v1_provisions__provision_id__diff_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provisions/{provision_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provision Timeline
+         * @description Return the chronological history of versions for this provision.
+         */
+        get: operations["get_provision_timeline_v1_provisions__provision_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/version": {
         parameters: {
             query?: never;
@@ -632,6 +712,71 @@ export interface components {
             message: string;
             /** Subject */
             subject: string | null;
+        };
+        /**
+         * AmendingDocumentSummary
+         * @description Summary of the document that introduced an amendment.
+         */
+        AmendingDocumentSummary: {
+            /** Doc Date */
+            doc_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string | null;
+            /** Title */
+            title: string | null;
+        };
+        /**
+         * AmendmentSummary
+         * @description The amendment proposal data shown when reviewing an amendment task.
+         */
+        AmendmentSummary: {
+            /** Current Provision Text */
+            current_provision_text?: string | null;
+            /** Dry Run Diff */
+            dry_run_diff: string | null;
+            /** Dry Run Ok */
+            dry_run_ok: boolean | null;
+            /** Effective Condition */
+            effective_condition: string | null;
+            /** Effective From */
+            effective_from: string | null;
+            /** Extraction Conf */
+            extraction_conf: number | null;
+            /** Extraction Method */
+            extraction_method: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** New Text */
+            new_text: string | null;
+            /** Old Text */
+            old_text: string | null;
+            /** Op */
+            op: string;
+            /** Review Status */
+            review_status: string;
+            /** Source Block Id */
+            source_block_id: string | null;
+            /**
+             * Source Document Id
+             * Format: uuid
+             */
+            source_document_id: string;
+            /** Target Locator */
+            target_locator: {
+                [key: string]: unknown;
+            } | null;
+            /** Target Provision Id */
+            target_provision_id: string | null;
+            /** Target Provision Path */
+            target_provision_path?: string | null;
         };
         /**
          * AssignBody
@@ -1136,6 +1281,35 @@ export interface components {
             status_changed: boolean;
         };
         /**
+         * PointInTimeProvisionDetail
+         * @description A legal provision and its version active at a point in time.
+         */
+        PointInTimeProvisionDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Instrument Code */
+            instrument_code: string;
+            /**
+             * Instrument Id
+             * Format: uuid
+             */
+            instrument_id: string;
+            /** Instrument Short Name */
+            instrument_short_name: string;
+            /** Level */
+            level: string;
+            /** Number Label */
+            number_label: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /** Path */
+            path: string;
+            version?: components["schemas"]["ProvisionVersionDetail"] | null;
+        };
+        /**
          * ProblemPage
          * @description A page that failed extraction or was flagged, with its first blocks and page text.
          */
@@ -1190,6 +1364,27 @@ export interface components {
             valid_from: string;
         };
         /**
+         * ProvisionDiffResponse
+         * @description Word diff comparison between two versions of a provision.
+         */
+        ProvisionDiffResponse: {
+            /** Additions Count */
+            additions_count: number;
+            /** Deletions Count */
+            deletions_count: number;
+            /** Diff */
+            diff: string;
+            from_version: components["schemas"]["VersionRef"];
+            /** Identical */
+            identical: boolean;
+            /**
+             * Provision Id
+             * Format: uuid
+             */
+            provision_id: string;
+            to_version: components["schemas"]["VersionRef"];
+        };
+        /**
          * ProvisionRow
          * @description One provision in the tree: minimal info for tree display.
          */
@@ -1215,6 +1410,76 @@ export interface components {
             path: string;
             /** Text Chars */
             text_chars: number;
+        };
+        /**
+         * ProvisionTimelineItem
+         * @description An item in the chronological timeline of a provision.
+         */
+        ProvisionTimelineItem: {
+            amending_document?: components["schemas"]["AmendingDocumentSummary"] | null;
+            /** Created By Amendment Id */
+            created_by_amendment_id?: string | null;
+            /** Heading */
+            heading: string | null;
+            /** Origin */
+            origin: string;
+            /** Text Chars */
+            text_chars: number;
+            /** Text Preview */
+            text_preview: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
+        /**
+         * ProvisionTimelineResponse
+         * @description The timeline of versions for a provision.
+         */
+        ProvisionTimelineResponse: {
+            /** Items */
+            items: components["schemas"]["ProvisionTimelineItem"][];
+            /** Path */
+            path: string;
+            /**
+             * Provision Id
+             * Format: uuid
+             */
+            provision_id: string;
+        };
+        /**
+         * ProvisionVersionDetail
+         * @description The text and temporal metadata for a single provision version.
+         */
+        ProvisionVersionDetail: {
+            /** Created By Amendment Id */
+            created_by_amendment_id?: string | null;
+            /** Heading */
+            heading: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Origin */
+            origin: string;
+            /** Text */
+            text: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
         };
         /**
          * ProvisionsList
@@ -1277,6 +1542,7 @@ export interface components {
          * @description A review task with its context.
          */
         ReviewTaskDetail: {
+            amendment?: components["schemas"]["AmendmentSummary"] | null;
             /** Assignee Id */
             assignee_id: string | null;
             /** Assignee Name */
@@ -1678,6 +1944,28 @@ export interface components {
             version_no: number;
         };
         /**
+         * VersionRef
+         * @description Summary of a version for comparison.
+         */
+        VersionRef: {
+            /** Heading */
+            heading: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Origin */
+            origin: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+        };
+        /**
          * VersionSummary
          * @description A document version as shown with a parse failure.
          */
@@ -1768,6 +2056,28 @@ export interface components {
 export type $defs = Record<string, never>;
 export interface operations {
     health_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    ready_ready_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2707,6 +3017,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_provision_v1_provisions__provision_id__get: {
+        parameters: {
+            query?: {
+                /** @description Point-in-time date (YYYY-MM-DD) */
+                as_on?: string | null;
+            };
+            header?: never;
+            path: {
+                provision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointInTimeProvisionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_provision_diff_v1_provisions__provision_id__diff_get: {
+        parameters: {
+            query?: {
+                /** @description Start date (YYYY-MM-DD) */
+                from_date?: string | null;
+                /** @description End date (YYYY-MM-DD) */
+                to_date?: string | null;
+                /** @description Start version UUID */
+                from_version_id?: string | null;
+                /** @description End version UUID */
+                to_version_id?: string | null;
+            };
+            header?: never;
+            path: {
+                provision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionDiffResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_provision_timeline_v1_provisions__provision_id__timeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionTimelineResponse"];
                 };
             };
             /** @description Validation Error */

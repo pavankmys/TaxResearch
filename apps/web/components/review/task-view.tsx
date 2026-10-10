@@ -6,6 +6,7 @@ import type { components } from "@/lib/api-client/schema";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { AmendmentSection } from "./amendment-section";
 import { type BlockSelection, ParseFailureSection } from "./parse-failure-section";
 import { MetadataSection } from "./metadata-section";
 import { MissReportSection } from "./miss-report-section";
@@ -125,7 +126,10 @@ export function TaskView({ task, currentUserId, viewer }: TaskViewProps) {
             createdAt={task.opened_at}
           />
         ) : null}
-        {!["metadata", "parse_failure", "miss_report"].includes(task.kind) ? (
+        {task.kind === "amendment" ? (
+          <AmendmentSection amendment={task.amendment} resolution={resolution} />
+        ) : null}
+        {!["metadata", "parse_failure", "miss_report", "amendment"].includes(task.kind) ? (
           <p className="text-sm text-muted-foreground">This kind of task has no details view.</p>
         ) : null}
 
@@ -137,6 +141,7 @@ export function TaskView({ task, currentUserId, viewer }: TaskViewProps) {
           assigneeName={task.assignee_name}
           currentUserId={currentUserId}
           proposalFields={proposal?.fields ?? {}}
+          amendmentFields={(task.amendment as Record<string, unknown> | null) ?? null}
           decision={readDecision(resolution)}
         />
       </div>

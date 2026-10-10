@@ -10,7 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 import { formatDateTimeUtc, isClosedStatus, statusLabel } from "./format";
-import { buildEditPatch, editableFields, LIST_FIELDS, label } from "./edit-fields";
+import {
+  AMENDMENT_FIELDS,
+  METADATA_FIELDS,
+  buildEditPatch,
+  editableAmendmentFields,
+  editableFields,
+  LIST_FIELDS,
+  label,
+} from "./edit-fields";
 import { DECISION_LABELS, type Decision, type JsonRecord } from "./proposal";
 
 type Intent = "assign_me" | "unassign" | DecisionAction;
@@ -23,6 +31,7 @@ interface TaskActionsProps {
   assigneeName: string | null;
   currentUserId: string;
   proposalFields: JsonRecord;
+  amendmentFields?: JsonRecord | null;
   decision: Decision | null;
 }
 
@@ -41,6 +50,7 @@ export function TaskActions({
   assigneeName,
   currentUserId,
   proposalFields,
+  amendmentFields,
   decision,
 }: TaskActionsProps) {
   const ids = useId();
@@ -52,8 +62,14 @@ export function TaskActions({
 
   const closed = isClosedStatus(status);
   const isMetadata = kind === "metadata";
+  const isAmendment = kind === "amendment";
+  const canEdit = isMetadata || isAmendment;
   const assignedToMe = assigneeId !== null && assigneeId === currentUserId;
-  const fields = isMetadata ? editableFields(proposalFields) : [];
+  const fields = isMetadata
+    ? editableFields(proposalFields)
+    : isAmendment
+      ? editableAmendmentFields(amendmentFields ?? {})
+      : [];
 
   useEffect(() => {
     if (message) {
@@ -98,7 +114,9 @@ export function TaskActions({
       for (const field of fields) {
         edited[field.name] = String(data.get(`field:${field.name}`) ?? "");
       }
-      const result = buildEditPatch(proposalFields, edited);
+      const allowed = isMetadata ? METADATA_FIELDS : AMENDMENT_FIELDS;
+      const original = isMetadata ? proposalFields : (amendmentFields ?? {});
+      const result = buildEditPatch(original, edited, allowed);
       if (result.errors.length > 0) {
         setMessage({ tone: "error", text: result.errors.join(". ") });
         return;
@@ -172,7 +190,7 @@ export function TaskActions({
           )}
         </div>
 
-        {isMetadata ? (
+        {canEdit ? (
           <details className="rounded-md border p-3">
             <summary className="cursor-pointer text-sm font-medium">Edit fields</summary>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -200,7 +218,9 @@ export function TaskActions({
               })}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Only changed fields are saved. Parties and other object fields are not editable here.
+              {isMetadata
+                ? "Only changed fields are saved. Parties and other object fields are not editable here."
+                : "Only changed fields are saved. Overrides the proposal on approval."}
             </p>
           </details>
         ) : null}
@@ -217,7 +237,7 @@ export function TaskActions({
           <Button type="submit" value="approve" disabled={disabled}>
             Approve
           </Button>
-          {isMetadata ? (
+          {canEdit ? (
             <Button type="submit" value="edit_approve" disabled={disabled}>
               Edit then approve
             </Button>

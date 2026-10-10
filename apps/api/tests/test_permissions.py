@@ -25,6 +25,7 @@ def test_platform_admin_has_admin_actions() -> None:
             "miss_report.create",
             "baseline.read",
             "baseline.verify",
+            "provisions.read",
         }
     )
     assert has_permission(["platform_admin"], "users.manage")
@@ -32,6 +33,7 @@ def test_platform_admin_has_admin_actions() -> None:
     assert has_permission(["platform_admin"], "sources.manage")
     assert has_permission(["platform_admin"], "baseline.read")
     assert has_permission(["platform_admin"], "baseline.verify")
+    assert has_permission(["platform_admin"], "provisions.read")
 
 
 def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
@@ -51,6 +53,7 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
             "miss_report.create",
             "baseline.read",
             "baseline.verify",
+            "provisions.read",
         }
     )
     assert not has_permission(["platform_content_editor"], "users.read")
@@ -58,6 +61,7 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
     assert not has_permission(["platform_content_editor"], "audit.read")
     assert has_permission(["platform_content_editor"], "baseline.read")
     assert has_permission(["platform_content_editor"], "baseline.verify")
+    assert has_permission(["platform_content_editor"], "provisions.read")
 
 
 @pytest.mark.parametrize(
@@ -72,9 +76,12 @@ def test_content_editor_works_the_queue_but_cannot_manage_sources() -> None:
         "platform_admin",
     ],
 )
-def test_every_role_can_file_a_miss_report(role: str) -> None:
-    """Any signed-in user can report a miss; nothing else is open to the non-platform roles."""
+def test_every_role_can_file_a_miss_report_and_read_provisions(role: str) -> None:
+    """Any signed-in user can report a miss and read provisions;
+    nothing else is open to non-platform roles.
+    """
     assert has_permission([role], "miss_report.create")
+    assert has_permission([role], "provisions.read")
 
 
 @pytest.mark.parametrize(

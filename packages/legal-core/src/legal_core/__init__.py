@@ -2,6 +2,7 @@
 
 from .aliases import Aliases, load_aliases, normalise_series
 from .citations import Citation, looks_like_citation, parse_citation
+from .diff import word_diff
 from .ids import (
     circular_id,
     instruction_id,
@@ -37,4 +38,5 @@ __all__ = [
     "Step",
     "parse_locator",
     "find_instruments",
+    "word_diff",
 ]

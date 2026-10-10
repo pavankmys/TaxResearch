@@ -21,6 +21,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from worker import db, review
 from worker.errors import PermanentError
+from worker.ingest.amend_apply import apply_op, op_from_amendment
 from worker.ingest.amend_detect import BlockText, detect
 from worker.queue import Job
 
@@ -299,11 +300,6 @@ def detect_amendments_for(conn: Connection, payload: dict[str, Any]) -> dict[str
                         if "target_not_found" not in problems_list:
                             problems_list.append("target_not_found")
 
-        # Determine review status
-        review_status = review_status_for(proposal, target_resolved)
-        if review_status == "needs_info":
-            counts["needs_info"] += 1
-
         # Compute effective date and condition
         effective_from, effective_condition, extra = effective_for(
             proposal, detected.effective, doc_date
@@ -311,7 +307,64 @@ def detect_amendments_for(conn: Connection, payload: dict[str, Any]) -> dict[str
 
         # Build locator JSON
         locator = locator_json(proposal, proposal.instrument, extra)
-        locator["problems"] = problems_list  # includes why the target was not resolved
+
+        # Determine dry run diff
+        dry_run_ok: bool | None = None
+        dry_run_diff: str | None = None
+
+        if target_provision_id is not None:
+            check_date = effective_from or doc_date or date.today()
+            prov_version_row = conn.execute(
+                sa.select(db.provision_versions.c.text)
+                .where(
+                    db.provision_versions.c.provision_id == target_provision_id,
+                    db.provision_versions.c.valid_from <= check_date,
+                    sa.or_(
+                        db.provision_versions.c.valid_to.is_(None),
+                        db.provision_versions.c.valid_to > check_date,
+                    ),
+                    db.provision_versions.c.rec_to.is_(None),
+                )
+                .order_by(db.provision_versions.c.valid_from.desc())
+            ).first()
+
+            if prov_version_row is None:
+                prov_version_row = conn.execute(
+                    sa.select(db.provision_versions.c.text)
+                    .where(
+                        db.provision_versions.c.provision_id == target_provision_id,
+                        db.provision_versions.c.rec_to.is_(None),
+                    )
+                    .order_by(db.provision_versions.c.valid_from.desc())
+                ).first()
+
+            current_text = str(prov_version_row[0]) if prov_version_row else None
+            applied_op = op_from_amendment(
+                proposal.op, proposal.old_text, proposal.new_text, locator
+            )
+            if applied_op is None:
+                dry_run_ok = False
+                dry_run_diff = "unsupported_operation"
+                if "unsupported_operation" not in problems_list:
+                    problems_list.append("unsupported_operation")
+            else:
+                res = apply_op(current_text, applied_op)
+                dry_run_ok = res.ok
+                dry_run_diff = res.diff if res.ok else (res.reason or "dry_run_failed")
+                if not res.ok and res.reason and res.reason not in problems_list:
+                    problems_list.append(res.reason)
+        else:
+            dry_run_ok = False
+            dry_run_diff = (
+                "target_not_found" if "target_not_found" in problems_list else "target_unresolved"
+            )
+
+        # Determine review status
+        review_status = review_status_for(proposal, target_resolved)
+        if review_status == "needs_info":
+            counts["needs_info"] += 1
+
+        locator["problems"] = problems_list
 
         # Determine source_block_id (first block_id from proposal.block_ids, or NULL)
         source_block_id = None
@@ -336,8 +389,8 @@ def detect_amendments_for(conn: Connection, payload: dict[str, Any]) -> dict[str
                 bringing_into_force_doc_id=None,
                 extraction_method="rule",
                 extraction_conf=proposal.confidence,
-                dry_run_ok=None,
-                dry_run_diff=None,
+                dry_run_ok=dry_run_ok,
+                dry_run_diff=dry_run_diff,
                 review_status=review_status,
                 reviewer_id=None,
                 reviewed_at=None,
@@ -367,6 +420,8 @@ def detect_amendments_for(conn: Connection, payload: dict[str, Any]) -> dict[str
                     "kind": proposal.kind,
                     "status": proposal.status,
                     "problems": problems_list,
+                    "dry_run_ok": dry_run_ok,
+                    "dry_run_diff": dry_run_diff,
                 },
             )
             counts["tasks"] += 1

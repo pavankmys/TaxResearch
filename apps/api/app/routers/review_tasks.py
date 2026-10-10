@@ -10,7 +10,7 @@ import base64
 import binascii
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -32,6 +32,17 @@ BLOCKS_PER_PAGE = 20
 PAGE_TEXT_LIMIT = 5000
 NEAR_DUPLICATE_NOTICE = (
     "The proposal names a near-duplicate document. No merge was made; merge it manually."
+)
+
+AMENDMENT_FIELDS: frozenset[str] = frozenset(
+    {
+        "op",
+        "old_text",
+        "new_text",
+        "effective_from",
+        "effective_condition",
+        "target_provision_id",
+    }
 )
 
 # Field names accepted by an edit to a metadata task (TSD / plan "Metadata JSON").
@@ -83,8 +94,13 @@ _TASK_FROM = """
     LEFT JOIN users u ON u.id = t.assignee_id
     LEFT JOIN document_versions dv
         ON t.subject_type = 'document_version' AND dv.id = t.subject_id
+    LEFT JOIN amendments a
+        ON t.subject_type = 'amendment' AND a.id = t.subject_id
     LEFT JOIN documents d
-        ON d.id = CASE WHEN t.subject_type = 'document' THEN t.subject_id ELSE dv.document_id END
+        ON d.id = CASE
+            WHEN t.subject_type = 'document' THEN t.subject_id
+            WHEN t.subject_type = 'amendment' THEN a.source_document_id
+            ELSE dv.document_id END
 """
 SOURCE_CLAUSE = """
     EXISTS (
@@ -170,9 +186,35 @@ OPEN_TASKS_FOR_DOCUMENT_SQL = text(
     SELECT t.id FROM review_tasks t
     LEFT JOIN document_versions dv
         ON t.subject_type = 'document_version' AND dv.id = t.subject_id
+    LEFT JOIN amendments a
+        ON t.subject_type = 'amendment' AND a.id = t.subject_id
     WHERE t.id <> :task_id
       AND t.status = ANY(CAST(:open_statuses AS TEXT[]))
-      AND ((t.subject_type = 'document' AND t.subject_id = :doc_id) OR dv.document_id = :doc_id)
+      AND (
+          (t.subject_type = 'document' AND t.subject_id = :doc_id)
+          OR dv.document_id = :doc_id
+          OR a.source_document_id = :doc_id
+      )
+    LIMIT 1
+    """
+)
+AMENDMENT_DETAIL_SQL = text(
+    """
+    SELECT a.id, a.source_document_id, a.source_block_id, a.op, a.target_provision_id,
+           a.target_locator, a.old_text, a.new_text, a.effective_from, a.effective_condition,
+           a.extraction_method, a.extraction_conf, a.dry_run_ok, a.dry_run_diff, a.review_status,
+           p.path::text AS target_provision_path
+    FROM amendments a
+    LEFT JOIN provisions p ON p.id = a.target_provision_id
+    WHERE a.id = :id
+    """
+)
+CURRENT_PROVISION_TEXT_SQL = text(
+    """
+    SELECT text
+    FROM provision_versions
+    WHERE provision_id = :provision_id AND rec_to IS NULL
+    ORDER BY valid_from DESC
     LIMIT 1
     """
 )
@@ -259,6 +301,28 @@ class ProblemPage(BaseModel):
     blocks: list[BlockItem]
 
 
+class AmendmentSummary(BaseModel):
+    """The amendment proposal data shown when reviewing an amendment task."""
+
+    id: uuid.UUID
+    source_document_id: uuid.UUID
+    source_block_id: uuid.UUID | None
+    op: str
+    target_provision_id: uuid.UUID | None
+    target_locator: dict[str, Any] | None
+    old_text: str | None
+    new_text: str | None
+    effective_from: date | None
+    effective_condition: str | None
+    extraction_method: str | None
+    extraction_conf: float | None
+    dry_run_ok: bool | None
+    dry_run_diff: str | None
+    review_status: str
+    target_provision_path: str | None = None
+    current_provision_text: str | None = None
+
+
 class ReviewTaskDetail(ReviewTaskItem):
     """A review task with its context."""
 
@@ -268,6 +332,7 @@ class ReviewTaskDetail(ReviewTaskItem):
     version: VersionSummary | None = None
     problem_pages: list[ProblemPage] = Field(default_factory=list)
     near_duplicate_of: DocumentSummary | None = None
+    amendment: AmendmentSummary | None = None
 
 
 class ReviewTaskUpdate(ReviewTaskItem):
@@ -374,6 +439,13 @@ async def _document_id_for_subject(
         result = await session.execute(VERSION_DOCUMENT_SQL, {"id": subject_id})
         document_id: uuid.UUID | None = result.scalar_one_or_none()
         return document_id
+    if subject_type == "amendment":
+        result = await session.execute(
+            text("SELECT source_document_id FROM amendments WHERE id = :id"),
+            {"id": subject_id},
+        )
+        am_doc_id: uuid.UUID | None = result.scalar_one_or_none()
+        return am_doc_id
     return None
 
 
@@ -520,6 +592,7 @@ async def get_task(
 
     document: DocumentSummary | None = None
     version: VersionSummary | None = None
+    amendment: AmendmentSummary | None = None
     problem_pages: list[ProblemPage] = []
     subject_id = row["subject_id"]
     if subject_id is not None and row["subject_type"] == "document":
@@ -530,6 +603,23 @@ async def get_task(
             version = VersionSummary.model_validate(dict(version_row))
             document = await _fetch_document(session, version.document_id)
             problem_pages = await _problem_pages(session, version.id)
+    elif subject_id is not None and row["subject_type"] == "amendment":
+        am_doc_id = await _document_id_for_subject(session, "amendment", subject_id)
+        if am_doc_id is not None:
+            document = await _fetch_document(session, am_doc_id)
+        am_res = await session.execute(AMENDMENT_DETAIL_SQL, {"id": subject_id})
+        am_row = am_res.mappings().first()
+        if am_row is not None:
+            curr_text = None
+            if am_row["target_provision_id"] is not None:
+                txt_res = await session.execute(
+                    CURRENT_PROVISION_TEXT_SQL, {"provision_id": am_row["target_provision_id"]}
+                )
+                curr_text = txt_res.scalar_one_or_none()
+            amendment = AmendmentSummary(
+                **dict(am_row),
+                current_provision_text=curr_text,
+            )
 
     near_duplicate: DocumentSummary | None = None
     duplicate_id = _near_duplicate_id(row["resolution"])
@@ -542,6 +632,7 @@ async def get_task(
         version=version,
         problem_pages=problem_pages,
         near_duplicate_of=near_duplicate,
+        amendment=amendment,
     )
 
 
@@ -632,6 +723,16 @@ async def decide_task(
                 detail=f"Unknown metadata field(s): {', '.join(unknown)}",
             )
 
+    is_amendment = kind == "amendment" and task["subject_type"] == "amendment"
+    amendment_id = task["subject_id"] if is_amendment else None
+    if is_amendment and body.action == "edit_approve":
+        unknown_am = sorted(set(fields) - AMENDMENT_FIELDS)
+        if unknown_am:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown amendment field(s): {', '.join(unknown_am)}",
+            )
+
     document_id = await _document_id_for_subject(session, task["subject_type"], task["subject_id"])
     if is_metadata_edit and document_id is None:
         raise HTTPException(status_code=422, detail="Metadata task has no document to edit")
@@ -647,6 +748,145 @@ async def decide_task(
     if body.fields is not None:
         decision["fields"] = body.fields
     resolution["decision"] = decision
+
+    if is_amendment and amendment_id is not None:
+        if body.action == "edit_approve":
+            am_row = (
+                (
+                    await session.execute(
+                        text(
+                            "SELECT op, old_text, new_text, effective_from, effective_condition, "
+                            "target_provision_id FROM amendments WHERE id = :id"
+                        ),
+                        {"id": amendment_id},
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if am_row:
+                orig = dict(am_row)
+                if orig.get("effective_from") is not None:
+                    orig["effective_from"] = orig["effective_from"].isoformat()
+                if orig.get("target_provision_id") is not None:
+                    orig["target_provision_id"] = str(orig["target_provision_id"])
+                resolution["original_amendment"] = orig
+
+            set_clauses = [
+                "review_status = 'approved'",
+                "reviewer_id = :actor",
+                "reviewed_at = :now",
+                "review_note = :note",
+                "updated_by = :actor",
+                "updated_at = :now",
+            ]
+            update_vals: dict[str, Any] = {
+                "id": amendment_id,
+                "actor": actor.id,
+                "now": now,
+                "note": body.note,
+            }
+            for k, v in fields.items():
+                set_clauses.append(f"{k} = :{k}")
+                if k == "effective_from" and isinstance(v, str):
+                    update_vals[k] = date.fromisoformat(v)
+                elif k == "target_provision_id" and isinstance(v, str):
+                    update_vals[k] = uuid.UUID(v)
+                else:
+                    update_vals[k] = v
+
+            await session.execute(
+                text(f"UPDATE amendments SET {', '.join(set_clauses)} WHERE id = :id"),
+                update_vals,
+            )
+        elif body.action == "approve":
+            await session.execute(
+                text(
+                    """
+                    UPDATE amendments
+                    SET review_status = :review_status,
+                        reviewer_id = :actor,
+                        reviewed_at = :now,
+                        review_note = :note,
+                        updated_by = :actor,
+                        updated_at = :now
+                    WHERE id = :id
+                    """
+                ),
+                {
+                    "id": amendment_id,
+                    "review_status": "approved",
+                    "actor": actor.id,
+                    "now": now,
+                    "note": body.note,
+                },
+            )
+        elif body.action == "reject":
+            await session.execute(
+                text(
+                    """
+                    UPDATE amendments
+                    SET review_status = :review_status,
+                        reviewer_id = :actor,
+                        reviewed_at = :now,
+                        review_note = :note,
+                        updated_by = :actor,
+                        updated_at = :now
+                    WHERE id = :id
+                    """
+                ),
+                {
+                    "id": amendment_id,
+                    "review_status": "rejected",
+                    "actor": actor.id,
+                    "now": now,
+                    "note": body.note,
+                },
+            )
+        elif body.action == "needs_info":
+            await session.execute(
+                text(
+                    """
+                    UPDATE amendments
+                    SET review_status = :review_status,
+                        updated_by = :actor,
+                        updated_at = :now
+                    WHERE id = :id
+                    """
+                ),
+                {
+                    "id": amendment_id,
+                    "review_status": "needs_info",
+                    "actor": actor.id,
+                    "now": now,
+                },
+            )
+
+        if body.action in ("approve", "edit_approve"):
+            cur_am = (
+                (
+                    await session.execute(
+                        text(
+                            "SELECT target_provision_id, effective_from "
+                            "FROM amendments WHERE id = :id"
+                        ),
+                        {"id": amendment_id},
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if cur_am and cur_am["target_provision_id"] and cur_am["effective_from"]:
+                if cur_am["effective_from"] <= date.today():
+                    await _enqueue(
+                        session,
+                        "ingest.consolidate",
+                        {
+                            "amendment_id": str(amendment_id),
+                            "provision_id": str(cur_am["target_provision_id"]),
+                        },
+                        f"consolidate:{task_id}",
+                    )
 
     notices: list[str] = []
     if kind == "metadata" and body.action == "approve" and resolution.get("near_duplicate_of"):
@@ -667,7 +907,7 @@ async def decide_task(
             "id": task_id,
             "status": new_status,
             "closed_at": now if closes else None,
-            "resolution": json.dumps(resolution),
+            "resolution": json.dumps(resolution, default=str),
             "actor": actor.id,
             "now": now,
         },

@@ -39,6 +39,247 @@
         "title": "Alert",
         "type": "object"
       },
+      "AmendingDocumentSummary": {
+        "description": "Summary of the document that introduced an amendment.",
+        "properties": {
+          "doc_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "number",
+          "doc_date"
+        ],
+        "title": "AmendingDocumentSummary",
+        "type": "object"
+      },
+      "AmendmentSummary": {
+        "description": "The amendment proposal data shown when reviewing an amendment task.",
+        "properties": {
+          "current_provision_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Provision Text"
+          },
+          "dry_run_diff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dry Run Diff"
+          },
+          "dry_run_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dry Run Ok"
+          },
+          "effective_condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Condition"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "extraction_conf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Conf"
+          },
+          "extraction_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Method"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "new_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Text"
+          },
+          "old_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Text"
+          },
+          "op": {
+            "title": "Op",
+            "type": "string"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "source_block_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Block Id"
+          },
+          "source_document_id": {
+            "format": "uuid",
+            "title": "Source Document Id",
+            "type": "string"
+          },
+          "target_locator": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Locator"
+          },
+          "target_provision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Provision Id"
+          },
+          "target_provision_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Provision Path"
+          }
+        },
+        "required": [
+          "id",
+          "source_document_id",
+          "source_block_id",
+          "op",
+          "target_provision_id",
+          "target_locator",
+          "old_text",
+          "new_text",
+          "effective_from",
+          "effective_condition",
+          "extraction_method",
+          "extraction_conf",
+          "dry_run_ok",
+          "dry_run_diff",
+          "review_status"
+        ],
+        "title": "AmendmentSummary",
+        "type": "object"
+      },
       "AssignBody": {
         "description": "Body of POST /{id}/assign. ``null`` unassigns; ``me`` assigns the caller.",
         "properties": {
@@ -1556,6 +1797,74 @@
         "title": "PatchAccepted",
         "type": "object"
       },
+      "PointInTimeProvisionDetail": {
+        "description": "A legal provision and its version active at a point in time.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instrument_code": {
+            "title": "Instrument Code",
+            "type": "string"
+          },
+          "instrument_id": {
+            "format": "uuid",
+            "title": "Instrument Id",
+            "type": "string"
+          },
+          "instrument_short_name": {
+            "title": "Instrument Short Name",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "number_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Label"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvisionVersionDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "instrument_id",
+          "instrument_code",
+          "instrument_short_name",
+          "path",
+          "level",
+          "number_label",
+          "ordinal"
+        ],
+        "title": "PointInTimeProvisionDetail",
+        "type": "object"
+      },
       "ProblemPage": {
         "description": "A page that failed extraction or was flagged, with its first blocks and page text.",
         "properties": {
@@ -1705,6 +2014,49 @@
         "title": "ProvisionDetail",
         "type": "object"
       },
+      "ProvisionDiffResponse": {
+        "description": "Word diff comparison between two versions of a provision.",
+        "properties": {
+          "additions_count": {
+            "title": "Additions Count",
+            "type": "integer"
+          },
+          "deletions_count": {
+            "title": "Deletions Count",
+            "type": "integer"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "string"
+          },
+          "from_version": {
+            "$ref": "#/components/schemas/VersionRef"
+          },
+          "identical": {
+            "title": "Identical",
+            "type": "boolean"
+          },
+          "provision_id": {
+            "format": "uuid",
+            "title": "Provision Id",
+            "type": "string"
+          },
+          "to_version": {
+            "$ref": "#/components/schemas/VersionRef"
+          }
+        },
+        "required": [
+          "provision_id",
+          "from_version",
+          "to_version",
+          "identical",
+          "diff",
+          "additions_count",
+          "deletions_count"
+        ],
+        "title": "ProvisionDiffResponse",
+        "type": "object"
+      },
       "ProvisionRow": {
         "description": "One provision in the tree: minimal info for tree display.",
         "properties": {
@@ -1780,6 +2132,185 @@
           "has_baseline"
         ],
         "title": "ProvisionRow",
+        "type": "object"
+      },
+      "ProvisionTimelineItem": {
+        "description": "An item in the chronological timeline of a provision.",
+        "properties": {
+          "amending_document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AmendingDocumentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_by_amendment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Amendment Id"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "text_chars": {
+            "title": "Text Chars",
+            "type": "integer"
+          },
+          "text_preview": {
+            "title": "Text Preview",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "heading",
+          "valid_from",
+          "valid_to",
+          "origin",
+          "text_chars",
+          "text_preview"
+        ],
+        "title": "ProvisionTimelineItem",
+        "type": "object"
+      },
+      "ProvisionTimelineResponse": {
+        "description": "The timeline of versions for a provision.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProvisionTimelineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "provision_id": {
+            "format": "uuid",
+            "title": "Provision Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provision_id",
+          "path",
+          "items"
+        ],
+        "title": "ProvisionTimelineResponse",
+        "type": "object"
+      },
+      "ProvisionVersionDetail": {
+        "description": "The text and temporal metadata for a single provision version.",
+        "properties": {
+          "created_by_amendment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Amendment Id"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "text",
+          "valid_from",
+          "valid_to",
+          "origin"
+        ],
+        "title": "ProvisionVersionDetail",
         "type": "object"
       },
       "ProvisionsList": {
@@ -1926,6 +2457,16 @@
       "ReviewTaskDetail": {
         "description": "A review task with its context.",
         "properties": {
+          "amendment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AmendmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "assignee_id": {
             "anyOf": [
               {
@@ -3198,6 +3739,57 @@
         "title": "VersionOut",
         "type": "object"
       },
+      "VersionRef": {
+        "description": "Summary of a version for comparison.",
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "id",
+          "valid_from",
+          "valid_to",
+          "origin",
+          "heading"
+        ],
+        "title": "VersionRef",
+        "type": "object"
+      },
       "VersionSummary": {
         "description": "A document version as shown with a parse failure.",
         "properties": {
@@ -3427,6 +4019,29 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Readiness check endpoint. Returns 503 if database is unreachable.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ready Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready"
       }
     },
     "/v1/admin/audit": {
@@ -5072,6 +5687,233 @@
         "summary": "Update Source",
         "tags": [
           "sources"
+        ]
+      }
+    },
+    "/v1/provisions/{provision_id}": {
+      "get": {
+        "description": "Return provision details and the version active at `as_on` (or currently active).",
+        "operationId": "get_provision_v1_provisions__provision_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provision Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Point-in-time date (YYYY-MM-DD)",
+            "in": "query",
+            "name": "as_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (YYYY-MM-DD)",
+              "title": "As On"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointInTimeProvisionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provision",
+        "tags": [
+          "provisions"
+        ]
+      }
+    },
+    "/v1/provisions/{provision_id}/diff": {
+      "get": {
+        "description": "Compare two versions of a provision (either by version IDs or by valid dates).",
+        "operationId": "get_provision_diff_v1_provisions__provision_id__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provision Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Start date (YYYY-MM-DD)",
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date (YYYY-MM-DD)",
+              "title": "From Date"
+            }
+          },
+          {
+            "description": "End date (YYYY-MM-DD)",
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End date (YYYY-MM-DD)",
+              "title": "To Date"
+            }
+          },
+          {
+            "description": "Start version UUID",
+            "in": "query",
+            "name": "from_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start version UUID",
+              "title": "From Version Id"
+            }
+          },
+          {
+            "description": "End version UUID",
+            "in": "query",
+            "name": "to_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End version UUID",
+              "title": "To Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionDiffResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provision Diff",
+        "tags": [
+          "provisions"
+        ]
+      }
+    },
+    "/v1/provisions/{provision_id}/timeline": {
+      "get": {
+        "description": "Return the chronological history of versions for this provision.",
+        "operationId": "get_provision_timeline_v1_provisions__provision_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionTimelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Provision Timeline",
+        "tags": [
+          "provisions"
         ]
       }
     },

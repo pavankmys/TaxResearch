@@ -9,12 +9,13 @@ Pure functions, no database.
 - :func:`word_diff` marks the change as ``[-removed-]`` and ``{+added+}`` for the review pane.
 """
 
-import difflib
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal
+
+from legal_core import word_diff
 
 OpKind = Literal[
     "substitute_words",
@@ -106,25 +107,6 @@ def _pick(
     if len(spans) > 1:
         return None, f"{what}_ambiguous"
     return spans[0], None
-
-
-def word_diff(old: str | None, new: str | None) -> str:
-    """The change as text: ``[-removed-]`` and ``{+added+}`` around the words that differ."""
-    old_tokens = _TOKENS.findall(old or "")
-    new_tokens = _TOKENS.findall(new or "")
-    out: list[str] = []
-    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
-        a=old_tokens, b=new_tokens, autojunk=False
-    ).get_opcodes():
-        if tag == "equal":
-            out.append("".join(old_tokens[i1:i2]))
-            continue
-        if i2 > i1:
-            out.append("[-" + "".join(old_tokens[i1:i2]).strip() + "-]")
-        if j2 > j1:
-            out.append("{+" + "".join(new_tokens[j1:j2]).strip() + "+}")
-        out.append(" ")
-    return re.sub(r" {2,}", " ", "".join(out)).strip()
 
 
 def _fail(reason: str, text: str | None) -> ApplyResult:

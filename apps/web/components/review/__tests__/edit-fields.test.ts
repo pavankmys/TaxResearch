@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AMENDMENT_FIELDS,
   buildEditPatch,
+  editableAmendmentFields,
   editableFields,
   formValueFor,
   label,
@@ -106,5 +108,53 @@ describe("helpers", () => {
 
   it("labels a field name for a reviewer", () => {
     expect(label("doc_date")).toBe("Doc date");
+  });
+});
+
+describe("editableAmendmentFields and amendment buildEditPatch", () => {
+  const AMENDMENT_ORIGINAL = {
+    op: "substitute",
+    old_text: "twenty",
+    new_text: "ten",
+    effective_from: "2026-01-01",
+    effective_condition: "on_date",
+    target_provision_id: "00000000-0000-0000-0000-000000000001",
+  };
+
+  it("offers all amendment fields with initial values", () => {
+    const fields = editableAmendmentFields(AMENDMENT_ORIGINAL);
+    expect(fields.map((f) => f.name)).toEqual([
+      "op",
+      "old_text",
+      "new_text",
+      "effective_from",
+      "effective_condition",
+      "target_provision_id",
+    ]);
+    expect(fields.find((f) => f.name === "old_text")?.initial).toBe("twenty");
+    expect(fields.find((f) => f.name === "new_text")?.initial).toBe("ten");
+  });
+
+  it("builds edit patch for amendment fields", () => {
+    const patch = buildEditPatch(
+      AMENDMENT_ORIGINAL,
+      { new_text: "fifteen", effective_from: "2026-06-01" },
+      AMENDMENT_FIELDS,
+    );
+    expect(patch.errors).toEqual([]);
+    expect(patch.patch).toEqual({
+      new_text: "fifteen",
+      effective_from: "2026-06-01",
+    });
+  });
+
+  it("validates date format for effective_from", () => {
+    const patch = buildEditPatch(
+      AMENDMENT_ORIGINAL,
+      { effective_from: "invalid-date" },
+      AMENDMENT_FIELDS,
+    );
+    expect(patch.errors.length).toBeGreaterThan(0);
+    expect(patch.errors[0]).toContain("must be a date");
   });
 });

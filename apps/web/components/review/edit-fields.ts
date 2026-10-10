@@ -81,11 +81,31 @@ export function parseListText(text: string): string[] {
     .filter((item) => item.length > 0);
 }
 
+/**
+ * Amendment fields that a reviewer may edit when doing edit_approve.
+ */
+export const AMENDMENT_FIELDS = [
+  "op",
+  "old_text",
+  "new_text",
+  "effective_from",
+  "effective_condition",
+  "target_provision_id",
+] as const;
+
 /** The editable fields, in METADATA_FIELDS order, with their starting text. */
 export function editableFields(proposalFields: JsonRecord): EditableField[] {
   return METADATA_FIELDS.filter((name) => !OBJECT_FIELDS.has(name)).map((name) => ({
     name,
     initial: formValueFor(proposalFields[name]),
+  }));
+}
+
+/** The editable fields for an amendment task, in AMENDMENT_FIELDS order. */
+export function editableAmendmentFields(amendmentFields: JsonRecord): EditableField[] {
+  return AMENDMENT_FIELDS.map((name) => ({
+    name,
+    initial: formValueFor(amendmentFields[name]),
   }));
 }
 
@@ -101,12 +121,13 @@ export interface EditPatch {
 export function buildEditPatch(
   original: JsonRecord,
   edited: Record<string, string>,
+  allowedFields: readonly string[] = METADATA_FIELDS,
 ): EditPatch {
   const patch: JsonRecord = {};
   const errors: string[] = [];
 
   for (const [name, rawText] of Object.entries(edited)) {
-    if (!METADATA_FIELDS.includes(name as (typeof METADATA_FIELDS)[number])) {
+    if (!allowedFields.includes(name)) {
       continue;
     }
     if (OBJECT_FIELDS.has(name)) {
@@ -136,7 +157,7 @@ export function buildEditPatch(
       } else {
         errors.push(`${label(name)} must be a whole number`);
       }
-    } else if (name.endsWith("_date")) {
+    } else if (name.endsWith("_date") || name === "effective_from") {
       if (DATE_PATTERN.test(text)) {
         patch[name] = text;
       } else {

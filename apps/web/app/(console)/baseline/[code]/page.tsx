@@ -2,13 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProvisionTree } from "@/components/baseline/provision-tree";
+import { ProvisionTimeline } from "@/components/provisions/provision-timeline";
 import { StatusBadge } from "@/components/baseline/status-badge";
 import { VerifyForm } from "@/components/baseline/verify-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadFailed } from "@/components/dashboard/load-failed";
 import { formatDate, formatCount } from "@/components/dashboard/format";
 import { isUuid } from "@/components/documents/ids";
+import type { components } from "@/lib/api-client/schema";
 import { apiClient } from "@/lib/server/api";
+
+type ProvisionTimelineItem = components["schemas"]["ProvisionTimelineItem"];
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -47,11 +51,19 @@ export default async function BaselineDetailPage({
   const instrument = data.instrument;
   let detail = null;
 
+  let timelineItems: ProvisionTimelineItem[] = [];
+
   if (selectedId) {
-    const detailResponse = await client.GET("/v1/baseline/instruments/{code}/provisions/{provision_id}", {
-      params: { path: { code, provision_id: selectedId } },
-    });
+    const [detailResponse, timelineResponse] = await Promise.all([
+      client.GET("/v1/baseline/instruments/{code}/provisions/{provision_id}", {
+        params: { path: { code, provision_id: selectedId } },
+      }),
+      client.GET("/v1/provisions/{provision_id}/timeline", {
+        params: { path: { provision_id: selectedId } },
+      }),
+    ]);
     detail = detailResponse.data;
+    timelineItems = timelineResponse.data?.items ?? [];
     if (!detail && detailResponse.response.status !== 404) {
       return (
         <section className="space-y-6">
@@ -158,6 +170,13 @@ export default async function BaselineDetailPage({
                       {detail.source_page ? `page ${detail.source_page}` : "document"}
                     </Link>
                   </p>
+                </div>
+              )}
+
+              {timelineItems.length > 0 && selectedId && (
+                <div className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-semibold">Version History & Timeline</h3>
+                  <ProvisionTimeline provisionId={selectedId} items={timelineItems} />
                 </div>
               )}
             </>
